@@ -1,0 +1,15 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Generated dependencies, build output, and local caches are never release inputs"
+paths = [
+  '''(^|[\\/])\.git([\\/]|$)''',
+  '''(^|[\\/])node_modules([\\/]|$)''',
+  '''(^|[\\/])backend[\\/]\.venv([\\/]|$)''',
+  '''(^|[\\/])backend[\\/]\.pytest_cache([\\/]|$)''',
+  '''(^|[\\/])python-embed([\\/]|$)''',
+  '''(^|[\\/])dist([\\/]|$)''',
+  '''(^|[\\/])dist-electron([\\/]|$)''',
+  '''(^|[\\/])release([\\/]|$)''',
+]

@@ -8,7 +8,7 @@ Prereqs:
 
 - Node.js
 - `uv` (Python package manager)
-- Python 3.12+
+- Python 3.13.12
 - Git
 
 Setup:
@@ -69,3 +69,22 @@ pnpm typecheck
 ```bash
 pnpm backend:test
 ```
+
+- Frontend tests and production build:
+
+```bash
+pnpm test:frontend
+pnpm build:frontend
+```
+
+## Security and privacy
+
+Report vulnerabilities through
+[private vulnerability reporting](https://github.com/MountainPlatform300/LTX-Desktop/security/advisories/new),
+not a public issue. Never submit API keys, tokens, private media, model weights,
+personal paths, pod identifiers, generated app data, or local environment files.
+New network, archive, filesystem, IPC, or process behavior should include abuse
+tests and explicit allowlists or bounds.
+
+By contributing, you agree to follow the repository
+[Code of Conduct](../CODE_OF_CONDUCT.md).

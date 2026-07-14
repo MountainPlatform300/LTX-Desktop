@@ -5,7 +5,7 @@ interface PythonSetupProps {
 }
 
 interface SetupProgress {
-  status: 'downloading' | 'extracting' | 'complete' | 'error'
+  status: 'downloading' | 'extracting' | 'installing-extras' | 'complete' | 'error'
   percent: number
   downloadedBytes: number
   totalBytes: number
@@ -87,7 +87,10 @@ export function PythonSetup({ onReady }: PythonSetupProps) {
     }
   }
 
-  const statusLabel = progress?.status === 'extracting' ? 'Extracting...' : 'Downloading Python environment...'
+  const statusLabel =
+    progress?.status === 'extracting' ? 'Extracting...'
+    : progress?.status === 'installing-extras' ? 'Installing RunPod dependencies...'
+    : 'Downloading Python environment...'
   const percent = progress?.percent ?? 0
 
   return (
@@ -256,7 +259,7 @@ export function PythonSetup({ onReady }: PythonSetupProps) {
                   color: '#a0a0a0'
                 }}>
                   <span style={{ flex: 1 }}>
-                    {progress?.status === 'extracting'
+                    {progress?.status === 'extracting' || progress?.status === 'installing-extras'
                       ? 'Setting up Python environment...'
                       : 'First-time setup — this only happens once'}
                   </span>
@@ -292,7 +295,9 @@ export function PythonSetup({ onReady }: PythonSetupProps) {
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
-          <div style={{ fontSize: 11, color: '#666' }}>&copy; 2026 Lightricks</div>
+          <div style={{ fontSize: 11, color: '#666' }}>
+            &copy; 2026 Lightricks and LTX Desktop contributors
+          </div>
         </div>
       </div>
     </div>

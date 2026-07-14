@@ -24,6 +24,10 @@ export interface ApiGatewayModalProps {
   description: string
   sections: ApiGatewaySection[]
   blocking?: boolean
+  /** When provided, a "continue without a key" escape is shown so the user can
+   *  browse the app without configuring required keys (e.g. unsupported-GPU
+   *  API-only mode). */
+  onSkip?: () => void
 }
 
 const KEY_TYPE_META: Record<ApiKeyType, { icon: typeof Zap; iconClass: string; chipClass: string }> = {
@@ -46,6 +50,7 @@ export function ApiGatewayModal({
   description,
   sections,
   blocking = false,
+  onSkip,
 }: ApiGatewayModalProps) {
   const [values, setValues] = useState<Record<ApiKeyType, string>>({ ltx: '', fal: '' })
   const [isSaving, setIsSaving] = useState<Record<ApiKeyType, boolean>>({ ltx: false, fal: false })
@@ -112,7 +117,7 @@ export function ApiGatewayModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
       <div className="w-full max-w-[620px] rounded-xl border border-zinc-700 bg-zinc-900 shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-4">
           <div className="flex items-center gap-2.5">
@@ -201,6 +206,17 @@ export function ApiGatewayModal({
           {blocking && requiredMissing && (
             <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
               Required API keys are missing. Add them to continue.
+            </div>
+          )}
+
+          {onSkip && (
+            <div className="flex justify-end">
+              <button
+                onClick={onSkip}
+                className="text-xs text-zinc-400 hover:text-zinc-200 underline underline-offset-2 transition-colors"
+              >
+                Continue without an API key
+              </button>
             </div>
           )}
 

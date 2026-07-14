@@ -4,9 +4,19 @@ import fs from 'fs'
 import { checkGPU } from '../gpu'
 import { isPythonReady, downloadPythonEmbed } from '../python-setup'
 import { getBackendHealthStatus, getBackendUrl, getAuthToken, getAdminToken, startPythonBackend } from '../python-backend'
+import { probeWsl, getWslSetupState, startWslInstall, restartWindows, probeWslMemory, configureWslMemory, restartWsl, ensureWslMemoryReady } from '../wsl-setup'
 import { getMainWindow } from '../window'
 import { getAnalyticsState, setAnalyticsEnabled, sendAnalyticsEvent } from '../analytics'
+import { logger } from '../logger'
 import { handle } from './typed-handle'
+
+function formatBytes(bytes: number): string {
+  if (bytes <= 0) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1)
+  const value = bytes / Math.pow(1024, i)
+  return `${value >= 100 || i === 0 ? Math.round(value) : value.toFixed(1)} ${units[i]}`
+}
 
 function getModelsPath(): string {
   const modelsPath = path.join(app.getPath('userData'), 'models')
@@ -93,6 +103,22 @@ export function registerAppHandlers(): void {
     return app.getPath('downloads')
   })
 
+  handle('getAvailableDiskSpace', () => {
+    // Free space on the drive that holds the models dir (where first-run
+    // downloads land). `statfs` needs an existing path, so fall back to the
+    // userData root if the models dir doesn't exist yet.
+    const modelsPath = path.join(app.getPath('userData'), 'models')
+    const target = fs.existsSync(modelsPath) ? modelsPath : app.getPath('userData')
+    let availableBytes = 0
+    try {
+      const stats = fs.statfsSync(target)
+      availableBytes = stats.bavail * stats.bsize
+    } catch (e) {
+      logger.error(`getAvailableDiskSpace: ${e}`)
+    }
+    return { availableBytes, label: formatBytes(availableBytes) }
+  })
+
   handle('checkFirstRun', () => {
     const settingsPath = path.join(app.getPath('userData'), 'app_state.json')
     return getSetupStatus(settingsPath)
@@ -146,6 +172,38 @@ export function registerAppHandlers(): void {
 
   handle('getBackendHealthStatus', () => {
     return getBackendHealthStatus()
+  })
+
+  handle('probeWsl', () => {
+    return probeWsl()
+  })
+
+  handle('getWslSetupState', () => {
+    return getWslSetupState()
+  })
+
+  handle('startWslInstall', async () => {
+    await startWslInstall()
+  })
+
+  handle('restartWindows', () => {
+    return restartWindows()
+  })
+
+  handle('probeWslMemory', () => {
+    return probeWslMemory()
+  })
+
+  handle('configureWslMemory', () => {
+    return configureWslMemory()
+  })
+
+  handle('restartWsl', () => {
+    return restartWsl()
+  })
+
+  handle('ensureWslMemoryReady', () => {
+    return ensureWslMemoryReady()
   })
 
   handle('getAnalyticsState', () => {

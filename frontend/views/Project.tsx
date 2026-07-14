@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ArrowLeft, Sparkles, Film } from 'lucide-react'
+import { ArrowLeft, Sparkles, Film, Wand2 } from 'lucide-react'
 import { useProjects } from '../contexts/ProjectContext'
 import { useView } from '../contexts/ViewContext'
 import { LtxLogo } from '../components/LtxLogo'
 import { Button } from '../components/ui/button'
 import { GenSpace } from './GenSpace'
 import { VideoEditor } from './VideoEditor'
+import { LoraTrainer } from './LoraTrainer'
 import type { ProjectTab } from '../types/project-model'
 import {
   hasVisualAssetMetadataForMigration,
@@ -94,6 +95,8 @@ export function Project() {
   const tabs: { id: ProjectTab; label: string; icon: React.ReactNode }[] = [
     { id: 'gen-space', label: 'Gen Space', icon: <Sparkles className="h-4 w-4" /> },
     { id: 'video-editor', label: 'Video Editor', icon: <Film className="h-4 w-4" /> },
+    // LoRA trainer tab (desktop app; the CEP panel is not part of this branch).
+    { id: 'lora-trainer' as ProjectTab, label: 'LoRA Trainer', icon: <Wand2 className="h-4 w-4" /> },
   ]
   const shouldShowAssetMetadataMigrationProgressScreen = assetMetadataMigrationProgress.running
     || (upgradePassProjectId !== activeProjectId && needsAssetMetadataMigration)
@@ -162,9 +165,18 @@ export function Project() {
       </header>
       
       <main className="flex-1 overflow-hidden relative">
-        {currentTab === 'gen-space' ? (
+        {/* Gen Space is kept mounted (hidden via CSS, not unmounted) while the
+            user is on another tab so its prompt box, generated assets, selected
+            asset, and in-progress work survive a trip to the LoRA Trainer or
+            Video Editor and back. Unmounting wiped all local state on tab
+            switch. */}
+        <div className={currentTab === 'gen-space' ? 'h-full' : 'hidden'}>
           <GenSpace />
-        ) : (
+        </div>
+        {currentTab === 'lora-trainer' && (
+          <LoraTrainer projectId={activeProject.id} embedded />
+        )}
+        {currentTab === 'video-editor' && (
           <VideoEditor
             key={activeProject.id}
             currentProject={activeProject}

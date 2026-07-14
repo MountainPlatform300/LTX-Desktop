@@ -57,6 +57,67 @@ const backendHealthStatus = z.object({
 
 export type BackendHealthStatus = z.infer<typeof backendHealthStatus>
 
+const wslSetupStage = z.enum(['idle', 'installing', 'reboot-required', 'verifying', 'complete', 'error'])
+
+const wslSetupState = z.object({
+  stage: wslSetupStage,
+  distro: z.string(),
+  startedAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+  error: z.string().nullable().optional(),
+})
+
+export type WslSetupStateApi = z.infer<typeof wslSetupState>
+
+const wslProbeResult = z.object({
+  platformSupported: z.boolean(),
+  windowsBuild: z.number(),
+  wslCommandPresent: z.boolean(),
+  wslEnginePresent: z.boolean(),
+  wslInstalled: z.boolean(),
+  defaultDistro: z.string().nullable(),
+  cudaInWsl: z.boolean(),
+  reason: z.string(),
+})
+
+export type WslProbeResultApi = z.infer<typeof wslProbeResult>
+
+const wslMemoryProbe = z.object({
+  hostRamGb: z.number(),
+  configuredMemoryGb: z.number().nullable(),
+  configuredSwapGb: z.number().nullable(),
+  recommendedMemoryGb: z.number(),
+  recommendedSwapGb: z.number(),
+  needsUpdate: z.boolean(),
+  path: z.string(),
+  reason: z.string().nullable(),
+})
+
+export type WslMemoryProbeApi = z.infer<typeof wslMemoryProbe>
+
+const wslMemoryConfigResult = z.object({
+  applied: z.boolean(),
+  memoryGb: z.number(),
+  swapGb: z.number(),
+  needsRestart: z.boolean(),
+  alreadyConfigured: z.boolean(),
+  error: z.string().nullable().optional(),
+})
+
+export type WslMemoryConfigResultApi = z.infer<typeof wslMemoryConfigResult>
+
+const wslMemoryReadiness = z.object({
+  ready: z.boolean(),
+  needsRestart: z.boolean(),
+  appliedNow: z.boolean(),
+  recommendedMemoryGb: z.number(),
+  liveMemoryGb: z.number().nullable(),
+  configuredMemoryGb: z.number().nullable(),
+  error: z.string().nullable(),
+})
+
+export type WslMemoryReadinessApi = z.infer<typeof wslMemoryReadiness>
+
 export const electronAPISchemas = {
   // App info
   getBackend: {
@@ -162,6 +223,10 @@ export const electronAPISchemas = {
     input: z.object({}),
     output: z.string(),
   },
+  getAvailableDiskSpace: {
+    input: z.object({}),
+    output: z.object({ availableBytes: z.number(), label: z.string() }),
+  },
 
   // Project assets
   addVisualAssetToProject: {
@@ -258,6 +323,14 @@ export const electronAPISchemas = {
     input: z.object({ sessionId: z.string() }),
     output: emptyResult,
   },
+  exportSideBySide: {
+    input: z.object({
+      leftPath: z.string(),
+      rightPath: z.string(),
+      outputPath: z.string(),
+    }),
+    output: emptyResult,
+  },
 
   // Python setup
   checkPythonReady: {
@@ -275,6 +348,40 @@ export const electronAPISchemas = {
   getBackendHealthStatus: {
     input: z.object({}),
     output: backendHealthStatus.nullable(),
+  },
+
+  // Local-training (WSL2) setup wizard
+  probeWsl: {
+    input: z.object({}),
+    output: wslProbeResult,
+  },
+  getWslSetupState: {
+    input: z.object({}),
+    output: wslSetupState,
+  },
+  startWslInstall: {
+    input: z.object({}),
+    output: z.void(),
+  },
+  restartWindows: {
+    input: z.object({}),
+    output: emptyResult,
+  },
+  probeWslMemory: {
+    input: z.object({}),
+    output: wslMemoryProbe,
+  },
+  configureWslMemory: {
+    input: z.object({}),
+    output: wslMemoryConfigResult,
+  },
+  restartWsl: {
+    input: z.object({}),
+    output: emptyResult,
+  },
+  ensureWslMemoryReady: {
+    input: z.object({}),
+    output: wslMemoryReadiness,
   },
 
   // Video processing
@@ -321,6 +428,7 @@ type InvokeAPI = {
 export type ElectronAPI = InvokeAPI & {
   onPythonSetupProgress: (cb: (data: unknown) => void) => void
   removePythonSetupProgress: () => void
+  onWslSetupProgress: (cb: (data: WslSetupStateApi) => void) => (() => void)
   onBackendHealthStatus: (cb: (data: BackendHealthStatus) => void) => (() => void)
   getPathForFile: (file: File) => string
   platform: string

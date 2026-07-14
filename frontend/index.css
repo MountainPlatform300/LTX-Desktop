@@ -7,6 +7,14 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Indeterminate activity bar for long LoRA prep/training phases that don't
+   expose a measurable percent (model load, cloning, installing). Slides a
+   short highlight across the track so it reads as "actively working". */
+@keyframes lora-shimmer {
+  0%   { transform: translateX(-120%); }
+  100% { transform: translateX(360%); }
+}
+
 /* ─────────────────────────────────────────
    THEME — edit this block to retheme the app
    Values are RGB channels: R G B
@@ -63,4 +71,31 @@ body {
 .dropzone-active {
   border-color: rgb(var(--accent)) !important;
   background-color: rgb(var(--accent) / 0.1) !important;
+}
+
+/* Asset-card overlay — responsive to the card's own width.
+   The card is a container; the action pills collapse to icon-only on cards
+   too narrow to fit the full labeled row, and the volume slider hides on the
+   smallest cards. Native CSS container queries (no Tailwind plugin needed). */
+.asset-card-cq { container-type: inline-size; }
+
+/* Hide the overlay's own scrollbar (used as an overflow fallback on the
+   top action row so the right-hand Download button is never pushed off). */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* The labeled top row (Heart + Retake + Apply LoRA + To LoRA + Download) needs
+   ~380px; below 420px the labels hide so the icon-only pills fit at every
+   Medium/Large column count and the Download button stops being clipped. */
+@container (max-width: 420px) {
+  .asset-card-label { display: none; }
+  .asset-card-pill { padding-left: 0.375rem; padding-right: 0.375rem; }
+  .asset-card-top-row { gap: 0.25rem; }
+}
+
+/* Volume slider hides only on the smallest cards (the bottom row never
+   overflows — it has no right-hand group). */
+@container (max-width: 240px) {
+  .asset-card-vol-slider { display: none; }
+  .asset-card-bottom-row { gap: 0.25rem; }
 }

@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import logging
-import pickle
 import time
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 import torch
+from safetensors.torch import load as load_safetensors
 
 from services.http_client.http_client import HTTPClient
 from state.app_state_types import TextEncodingResult
@@ -17,6 +17,64 @@ if TYPE_CHECKING:
     from state.app_state_types import AppState
 
 logger = logging.getLogger(__name__)
+
+_MAX_EMBEDDING_RESPONSE_BYTES = 256 * 1024**2
+_MAX_EMBEDDING_ELEMENTS = 64 * 1024**2
+_VIDEO_EMBEDDING_DIM = 4096
+_MAX_COMBINED_EMBEDDING_DIM = 16_384
+
+
+def _validate_embedding_tensor(
+    tensor: torch.Tensor, *, name: str, expected_last_dim: int | None = None
+) -> torch.Tensor:
+    if tensor.layout != torch.strided or not tensor.is_floating_point():
+        raise ValueError(f"{name} must be a dense floating-point tensor")
+    if tensor.ndim not in (2, 3):
+        raise ValueError(f"{name} must have 2 or 3 dimensions")
+    if tensor.numel() <= 0 or tensor.numel() > _MAX_EMBEDDING_ELEMENTS:
+        raise ValueError(f"{name} has an unsafe element count")
+    if expected_last_dim is not None and tensor.shape[-1] != expected_last_dim:
+        raise ValueError(f"{name} has an unexpected embedding dimension")
+    if tensor.shape[-1] <= 0 or tensor.shape[-1] > _MAX_COMBINED_EMBEDDING_DIM:
+        raise ValueError(f"{name} has an unsafe embedding dimension")
+    if not bool(torch.isfinite(tensor).all()):
+        raise ValueError(f"{name} contains non-finite values")
+    return tensor
+
+
+def _decode_safetensors_embeddings(payload: bytes) -> tuple[torch.Tensor, torch.Tensor | None]:
+    if not payload or len(payload) > _MAX_EMBEDDING_RESPONSE_BYTES:
+        raise ValueError("Embedding response has an unsafe size")
+    tensors = load_safetensors(payload)
+    if "video_context" in tensors:
+        video = _validate_embedding_tensor(
+            tensors["video_context"],
+            name="video_context",
+            expected_last_dim=_VIDEO_EMBEDDING_DIM,
+        )
+        audio_raw = tensors.get("audio_context")
+        audio = (
+            _validate_embedding_tensor(audio_raw, name="audio_context")
+            if audio_raw is not None
+            else None
+        )
+        if audio is not None and audio.shape[:-1] != video.shape[:-1]:
+            raise ValueError("Audio and video embeddings have incompatible shapes")
+        return video, audio
+
+    combined_raw = tensors.get("embeddings")
+    if combined_raw is None:
+        raise ValueError("Embedding response is missing a supported tensor")
+    combined = _validate_embedding_tensor(combined_raw, name="embeddings")
+    if combined.shape[-1] < _VIDEO_EMBEDDING_DIM:
+        raise ValueError("Combined embedding dimension is too small")
+    video = combined[..., :_VIDEO_EMBEDDING_DIM].contiguous()
+    audio = (
+        combined[..., _VIDEO_EMBEDDING_DIM:].contiguous()
+        if combined.shape[-1] > _VIDEO_EMBEDDING_DIM
+        else None
+    )
+    return video, audio
 
 
 class LTXTextEncoder:
@@ -188,6 +246,7 @@ class LTXTextEncoder:
                 headers={
                     "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json",
+                    "Accept": "application/x-safetensors, application/octet-stream",
                 },
                 json_payload={
                     "prompt": prompt,
@@ -201,19 +260,13 @@ class LTXTextEncoder:
                 logger.warning("LTX API error %s: %s", response.status_code, response.text)
                 return None
 
-            conditioning = pickle.loads(response.content)  # noqa: S301
-            if not conditioning or len(conditioning) == 0:
-                logger.warning("LTX API returned unexpected conditioning format")
-                return None
-
-            embeddings = conditioning[0][0]
-            video_dim = 4096
-            if embeddings.shape[-1] > video_dim:
-                video_context = embeddings[..., :video_dim].contiguous().to(dtype=torch.bfloat16, device=self.device)
-                audio_context = embeddings[..., video_dim:].contiguous().to(dtype=torch.bfloat16, device=self.device)
-            else:
-                video_context = embeddings.contiguous().to(dtype=torch.bfloat16, device=self.device)
-                audio_context = None
+            video_raw, audio_raw = _decode_safetensors_embeddings(response.content)
+            video_context = video_raw.to(dtype=torch.bfloat16, device=self.device)
+            audio_context = (
+                audio_raw.to(dtype=torch.bfloat16, device=self.device)
+                if audio_raw is not None
+                else None
+            )
 
             logger.info("Text encoded via API in %.1fs", time.time() - start)
             return TextEncodingResult(video_context=video_context, audio_context=audio_context)

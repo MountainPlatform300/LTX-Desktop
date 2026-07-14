@@ -1,0 +1,187 @@
+name: Source Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing signed prerelease tag (for example v1.1.0-beta.1)
+        required: true
+        type: string
+      publish:
+        description: Publish the GitHub prerelease after every gate passes
+        required: true
+        default: false
+        type: boolean
+
+concurrency:
+  group: source-release-${{ inputs.tag }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify-and-package:
+    name: Verify and package source release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+
+      - name: Scan source and tag history for secrets
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify release tag and version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse "${RELEASE_TAG}^{commit}")" = "$(git rev-parse HEAD)"
+          test "v$(node -p "require('./package.json').version")" = "$RELEASE_TAG"
+          ref_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" --jq .object.sha)"
+          object_type="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" --jq .object.type)"
+          test "$object_type" = "tag"
+          verified="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${ref_sha}" --jq .verification.verified)"
+          test "$verified" = "true"
+
+      - name: Verify required checks passed on tagged commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          sha="$(git rev-parse HEAD)"
+          checks="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${sha}/check-runs?per_page=100")"
+          required=(
+            "Secret Scan"
+            "Type Checking"
+            "Python Tests (linux)"
+            "Python Tests (windows)"
+            "Python Tests (macos)"
+            "Frontend Build"
+            "Analyze (python)"
+            "Analyze (javascript-typescript)"
+          )
+          for name in "${required[@]}"; do
+            conclusion="$(jq -r --arg name "$name" \
+              '([.check_runs[] | select(.name == $name)][0].conclusion // "")' \
+              <<<"$checks")"
+            test "$conclusion" = "success"
+          done
+
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
+        with:
+          version: "0.11.25"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.13.12"
+
+      - name: Install frozen dependencies
+        run: |
+          pnpm install --frozen-lockfile
+          cd backend
+          uv sync --frozen --extra test --extra dev
+
+      - name: Run release gates
+        run: |
+          pnpm openapi:check
+          pnpm typecheck:ts
+          pnpm typecheck:py
+          pnpm test:frontend
+          pnpm backend:test
+          pnpm build:frontend
+          pnpm audit --audit-level high
+
+      - name: Create source and dependency evidence
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p release/evidence
+          base_name="ltx-desktop-${RELEASE_TAG#v}"
+          notes_file="docs/RELEASE_NOTES_${RELEASE_TAG#v}.md"
+          test -f "$notes_file"
+          git archive --format=tar.gz --prefix="${base_name}/" \
+            --output="release/evidence/${base_name}.tar.gz" HEAD
+          cp "$notes_file" release/evidence/RELEASE_NOTES.md
+          pnpm licenses list --prod --json > release/evidence/node-licenses.json
+          uv export --frozen --no-dev --no-editable --no-emit-project \
+            --project backend --output-file release/evidence/python-requirements.txt
+
+      - name: Remove installed environments before source SBOM
+        run: rm -rf node_modules backend/.venv
+
+      - name: Generate SPDX SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          path: .
+          format: spdx-json
+          output-file: release/evidence/sbom.spdx.json
+          upload-artifact: false
+
+      - name: Generate SHA-256 manifest
+        run: node scripts/generate-checksums.mjs release/evidence
+
+      - name: Attest release evidence
+        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        with:
+          subject-path: release/evidence/*
+
+      - name: Upload gated evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: source-release-${{ inputs.tag }}
+          path: release/evidence/*
+          if-no-files-found: error
+          retention-days: 90
+
+  publish:
+    name: Publish source-only prerelease
+    if: ${{ inputs.publish }}
+    needs: verify-and-package
+    runs-on: ubuntu-latest
+    environment: source-release
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - name: Download gated evidence
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: source-release-${{ inputs.tag }}
+          path: release/evidence
+
+      - name: Verify downloaded evidence checksums
+        working-directory: release/evidence
+        run: sha256sum --check SHA256SUMS
+
+      - name: Publish immutable evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          gh release create "$RELEASE_TAG" release/evidence/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --prerelease \
+            --notes-file release/evidence/RELEASE_NOTES.md \
+            --title "LTX Desktop ${RELEASE_TAG} (source-only)"

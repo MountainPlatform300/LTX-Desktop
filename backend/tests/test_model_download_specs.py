@@ -76,6 +76,37 @@ def test_relative_paths_are_unique():
     assert len(relative_paths) == len(ALL_MODEL_CP_IDS)
 
 
+def test_new_image_model_checkpoints_have_specs_and_unique_folders():
+    new_ids: tuple[ModelCheckpointID, ...] = (
+        "flux-2-klein-9b",
+    )
+    for cp_id in new_ids:
+        spec = get_model_cp_spec(cp_id)
+        assert spec.is_folder is True
+        assert spec.repo_id
+        assert spec.expected_size_bytes > 0
+
+
+def test_gated_flag_is_set_on_gated_repos_only():
+    gated = {"flux-2-klein-9b"}
+    for cp_id in ALL_MODEL_CP_IDS:
+        spec = get_model_cp_spec(cp_id)
+        if cp_id in gated:
+            assert spec.is_gated is True, f"{cp_id} should be gated"
+        else:
+            assert spec.is_gated is False, f"{cp_id} should not be gated"
+
+
+def test_new_image_model_paths_are_unique_from_existing():
+    existing_paths = {
+        get_model_cp_spec(cp_id).relative_path
+        for cp_id in ALL_MODEL_CP_IDS
+        if cp_id not in {"flux-2-klein-9b"}
+    }
+    for cp_id in ("flux-2-klein-9b",):
+        assert get_model_cp_spec(cp_id).relative_path not in existing_paths
+
+
 def test_model_path_rejects_parent_traversal(monkeypatch, tmp_path):
     bad_spec = ModelCheckpointSpec(
         relative_path=Path("../escape.safetensors"),

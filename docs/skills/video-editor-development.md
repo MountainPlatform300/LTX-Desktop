@@ -29,12 +29,12 @@ Do not use this skill for unrelated frontend work, backend work, Electron-only w
 
 Before changing behavior, inspect the current contracts first:
 
-- [frontend/views/editor/editor-state.ts](../../../frontend/views/editor/editor-state.ts)
-- [frontend/views/editor/editor-store.tsx](../../../frontend/views/editor/editor-store.tsx)
-- [frontend/views/editor/editor-selectors.ts](../../../frontend/views/editor/editor-selectors.ts)
-- [frontend/views/editor/editor-actions.ts](../../../frontend/views/editor/editor-actions.ts)
-- [frontend/views/editor/editor-project-bridging.ts](../../../frontend/views/editor/editor-project-bridging.ts)
-- [frontend/views/VideoEditor.tsx](../../../frontend/views/VideoEditor.tsx)
+- [frontend/views/editor/editor-state.ts](../../frontend/views/editor/editor-state.ts)
+- [frontend/views/editor/editor-store.tsx](../../frontend/views/editor/editor-store.tsx)
+- [frontend/views/editor/editor-selectors.ts](../../frontend/views/editor/editor-selectors.ts)
+- [frontend/views/editor/editor-actions.ts](../../frontend/views/editor/editor-actions.ts)
+- [frontend/views/editor/editor-project-bridging.ts](../../frontend/views/editor/editor-project-bridging.ts)
+- [frontend/views/VideoEditor.tsx](../../frontend/views/VideoEditor.tsx)
 
 If the task touches imperative integrations, also inspect the relevant hook or component first, for example keyboard, menu, playback, timeline drag, source monitor, or regeneration.
 
@@ -99,7 +99,7 @@ Rules:
 
 Persistence is derived from `editorModel`, not from the entire store.
 
-- If a new field should persist into the project, update [frontend/views/editor/editor-project-bridging.ts](../../../frontend/views/editor/editor-project-bridging.ts).
+- If a new field should persist into the project, update [frontend/views/editor/editor-project-bridging.ts](../../frontend/views/editor/editor-project-bridging.ts).
 - In practice that means updating both `getEditorModel(...)` and `updatedProject(...)`.
 - Session and UI fields should not be pushed into project persistence unless there is an explicit product decision to persist them.
 
@@ -152,7 +152,7 @@ The pattern is:
 - use editor actions for editor state mutation
 - perform external side effects explicitly in the component or hook that owns the integration
 
-Gen Space communication currently happens through `ProjectContext` setters from [frontend/views/VideoEditor.tsx](../../../frontend/views/VideoEditor.tsx), not through editor store actions.
+Gen Space communication currently happens through `ProjectContext` setters from [frontend/views/VideoEditor.tsx](../../frontend/views/VideoEditor.tsx), not through editor store actions.
 
 ## VideoEditor Role
 
@@ -196,9 +196,9 @@ Use this checklist before merging editor changes:
 
 Use these files as the primary source of truth:
 
-- [frontend/views/editor/editor-state.ts](../../../frontend/views/editor/editor-state.ts)
-- [frontend/views/editor/editor-store.tsx](../../../frontend/views/editor/editor-store.tsx)
-- [frontend/views/editor/editor-selectors.ts](../../../frontend/views/editor/editor-selectors.ts)
-- [frontend/views/editor/editor-actions.ts](../../../frontend/views/editor/editor-actions.ts)
-- [frontend/views/editor/editor-project-bridging.ts](../../../frontend/views/editor/editor-project-bridging.ts)
-- [frontend/views/VideoEditor.tsx](../../../frontend/views/VideoEditor.tsx)
+- [frontend/views/editor/editor-state.ts](../../frontend/views/editor/editor-state.ts)
+- [frontend/views/editor/editor-store.tsx](../../frontend/views/editor/editor-store.tsx)
+- [frontend/views/editor/editor-selectors.ts](../../frontend/views/editor/editor-selectors.ts)
+- [frontend/views/editor/editor-actions.ts](../../frontend/views/editor/editor-actions.ts)
+- [frontend/views/editor/editor-project-bridging.ts](../../frontend/views/editor/editor-project-bridging.ts)
+- [frontend/views/VideoEditor.tsx](../../frontend/views/VideoEditor.tsx)

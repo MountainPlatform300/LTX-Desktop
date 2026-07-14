@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Plus, Folder, MoreVertical, Trash2, Pencil } from 'lucide-react'
+import { Plus, Folder, MoreVertical, Trash2, Pencil, Wand2 } from 'lucide-react'
 import { useProjects } from '../contexts/ProjectContext'
 import { useView } from '../contexts/ViewContext'
 import { LtxLogo } from '../components/LtxLogo'
@@ -7,6 +7,7 @@ import { Button } from '../components/ui/button'
 import { pathToFileUrl } from '../lib/file-url'
 import type { Project } from '../types/project-model'
 import { useProjectReferencesMigration } from '../hooks/useProjectReferencesMigration'
+import { confirmAction } from '../components/ui/confirm-dialog'
 
 function formatDate(timestamp: number): string {
   const date = new Date(timestamp)
@@ -124,7 +125,7 @@ function ProjectCard({ project, onOpen, onDelete, onRename }: {
 
 export function Home() {
   const { projectIds, getProject, createProject, deleteProject, renameProject } = useProjects()
-  const { openProject } = useView()
+  const { openProject, openLoraTrainer } = useView()
   const { migrationStatus, migrateProjects } = useProjectReferencesMigration()
   const [isCreating, setIsCreating] = useState(false)
   const [newProjectName, setNewProjectName] = useState('')
@@ -200,6 +201,14 @@ export function Home() {
           <button className="w-full px-3 py-2 rounded-lg bg-zinc-800 text-white text-left text-sm font-medium flex items-center gap-2">
             <Folder className="h-4 w-4" />
             Home
+          </button>
+
+          <button
+            onClick={openLoraTrainer}
+            className="w-full mt-1 px-3 py-2 rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-white text-left text-sm font-medium flex items-center gap-2 transition-colors"
+          >
+            <Wand2 className="h-4 w-4" />
+            LoRA Trainer
           </button>
           
           {projects.length > 0 && (
@@ -278,8 +287,13 @@ export function Home() {
                   key={project.id}
                   project={project}
                   onOpen={() => openProject(project.id)}
-                  onDelete={() => {
-                    if (confirm(`Delete "${project.name}"?`)) {
+                  onDelete={async () => {
+                    if (await confirmAction({
+                      title: `Delete “${project.name}”?`,
+                      message: 'The project and its saved timeline data will be removed.',
+                      confirmLabel: 'Delete project',
+                      variant: 'destructive',
+                    })) {
                       deleteProject(project.id)
                     }
                   }}

@@ -1,14 +1,15 @@
 {
   "name": "ltx-desktop",
-  "version": "1.0.5",
-  "description": "LTX-2 Video Generation - Desktop App",
+  "version": "1.1.0-beta.2",
+  "description": "Unofficial desktop fork for LTX-2 video generation and LoRA training",
   "type": "module",
   "main": "dist-electron/main.js",
   "author": {
-    "name": "Lightricks",
-    "email": "ltx-desktop-dev@lightricks.com"
+    "name": "LTX Desktop contributors",
+    "email": "304103258+MountainPlatform300@users.noreply.github.com"
   },
-  "homepage": "https://github.com/Lightricks/LTX-Desktop",
+  "homepage": "https://github.com/MountainPlatform300/LTX-Desktop",
+  "repository": "https://github.com/MountainPlatform300/LTX-Desktop",
   "license": "Apache-2.0",
   "private": true,
   "packageManager": "pnpm@10.30.3",
@@ -19,6 +20,7 @@
     "typecheck": "concurrently \"pnpm run typecheck:ts\" \"pnpm run typecheck:py\"",
     "typecheck:ts": "tsc --noEmit",
     "typecheck:py": "cd backend && uv run pyright",
+    "test:frontend": "vitest run",
     "openapi:export": "cd backend && uv run python export_openapi_schema.py",
     "openapi:types": "openapi-typescript frontend/generated/backend-openapi.json -o frontend/generated/backend-openapi.ts",
     "openapi:generate": "pnpm openapi:export && pnpm openapi:types",
@@ -28,6 +30,9 @@
     "build:skip-python": "node scripts/run-script.js scripts/local-build --skip-python",
     "build:fast": "node scripts/run-script.js scripts/local-build --unpack --skip-python",
     "prepare:python": "node scripts/run-script.js scripts/prepare-python",
+    "python:hash": "node scripts/generate-python-deps-hash.mjs",
+    "python:hash:check": "node scripts/generate-python-deps-hash.mjs --check",
+    "python:package": "node scripts/package-python-embed.mjs",
     "build:frontend": "vite build",
     "start:unpacked:mac": "open release/mac-arm64/LTX\\ Desktop.app",
     "start:unpacked:win": "powershell -Command \"& '.\\release\\win-unpacked\\LTX Desktop.exe'\""
@@ -36,7 +41,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "electron-updater": "^6.8.3",
-    "js-yaml": "^4.1.1",
+    "js-yaml": "^4.3.0",
     "lucide-react": "^0.400.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -47,6 +52,7 @@
   },
   "devDependencies": {
     "@resvg/resvg-js": "^2.6.2",
+    "@testing-library/react": "16.3.2",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.7.7",
     "@types/react": "^18.3.3",
@@ -55,15 +61,17 @@
     "autoprefixer": "^10.4.19",
     "concurrently": "^8.2.2",
     "cross-env": "^10.1.0",
-    "electron": "^41.0.2",
-    "electron-builder": "^26.8.1",
-    "openapi-typescript": "^7.10.1",
-    "postcss": "^8.4.38",
-    "tailwindcss": "^3.4.4",
+    "electron": "^41.1.0",
+    "electron-builder": "^26.15.3",
+    "jsdom": "29.1.1",
+    "openapi-typescript": "^7.13.0",
+    "postcss": "^8.5.10",
+    "tailwindcss": "^3.4.19",
     "typescript": "^5.4.5",
-    "vite": "^7.3.1",
+    "vite": "^7.3.6",
     "vite-plugin-electron": "^0.29.1",
-    "vite-plugin-electron-renderer": "^0.14.6"
+    "vite-plugin-electron-renderer": "^0.14.6",
+    "vitest": "4.1.9"
   },
   "pnpm": {
     "overrides": {

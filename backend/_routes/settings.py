@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Literal
 
 from fastapi import APIRouter, Depends, Request
 
@@ -15,6 +16,16 @@ from app_handler import AppHandler
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["settings"])
+
+CredentialName = Literal["ltx", "fal", "gemini", "pexels", "runpod", "hugging-face"]
+_CREDENTIAL_FIELDS: dict[CredentialName, str] = {
+    "ltx": "ltx_api_key",
+    "fal": "fal_api_key",
+    "gemini": "gemini_api_key",
+    "pexels": "pexels_api_key",
+    "runpod": "runpod_api_key",
+    "hugging-face": "hf_token",
+}
 
 
 @router.get("/settings", response_model=SettingsResponse)
@@ -42,4 +53,18 @@ def route_post_settings(
         ", ".join(sorted(changed_roots)) if changed_roots else "none",
     )
 
+    return StatusResponse(status="ok")
+
+
+@router.delete(
+    "/settings/credentials/{credential}",
+    response_model=StatusResponse,
+)
+def route_delete_credential(
+    credential: CredentialName,
+    handler: AppHandler = Depends(get_state_service),
+) -> StatusResponse:
+    """Remove one stored API credential without exposing its value."""
+    handler.settings.clear_secret(_CREDENTIAL_FIELDS[credential])
+    logger.info("Removed stored credential (%s)", credential)
     return StatusResponse(status="ok")

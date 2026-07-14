@@ -28,7 +28,7 @@ export function createWindow(): BrowserWindow {
       preload: preloadPath,
       contextIsolation: true,
       nodeIntegration: false,
-      webSecurity: isDev ? false : true,
+      webSecurity: true,
     },
     backgroundColor: '#1a1a1a',
     titleBarStyle: 'default',

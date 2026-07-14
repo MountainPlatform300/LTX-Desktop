@@ -9,6 +9,26 @@ export interface ExportSubtitle {
  * Build the ffmpeg filter_complex script and input arguments for the video-only pass.
  * Pure string building — zero I/O.
  */
+export function escapeDrawtextText(text: string): string {
+  // One pass prevents an escape sequence introduced for one character from
+  // being reinterpreted by a later replacement. Apostrophes are normalized to
+  // a typographic glyph so untrusted subtitle text cannot close text='...'.
+  return text.replace(/[\\':,;[\]\r\n]/g, (character) => {
+    switch (character) {
+      case '\\': return '\\\\\\\\'
+      case "'": return '’'
+      case ':': return '\\:'
+      case ',': return '\\,'
+      case ';': return '\\;'
+      case '[': return '\\['
+      case ']': return '\\]'
+      case '\r': return ''
+      case '\n': return '\\n'
+      default: return character
+    }
+  })
+}
+
 export function buildVideoFilterGraph(
   segments: FlatSegment[],
   opts: {
@@ -98,13 +118,7 @@ export function buildVideoFilterGraph(
     for (let si = 0; si < subtitles.length; si++) {
       const sub = subtitles[si]
       const nextLabel = `sub${si}`
-      // Escape text for ffmpeg drawtext: replace special chars
-      const escapedText = sub.text
-        .replace(/\\/g, '\\\\\\\\')
-        .replace(/'/g, "'\\\\\\''")
-        .replace(/:/g, '\\:')
-        .replace(/%/g, '%%')
-        .replace(/\n/g, '\\n')
+      const escapedText = escapeDrawtextText(sub.text)
 
       const fontSize = Math.round(sub.style.fontSize * (height / 1080)) // scale relative to export res
       const fontColor = sub.style.color.replace('#', '0x')
@@ -129,7 +143,7 @@ export function buildVideoFilterGraph(
         boxPart = `:box=1:boxcolor=${bgColor}@${bgAlpha}:boxborderw=8`
       }
 
-      const dtFilter = `drawtext=text='${escapedText}':fontsize=${fontSize}:fontcolor=${fontColor}:x=(w-text_w)/2:y=${yExpr}${boxPart}:enable='between(t\\,${sub.startTime.toFixed(3)}\\,${sub.endTime.toFixed(3)})'`
+      const dtFilter = `drawtext=text='${escapedText}':expansion=none:fontsize=${fontSize}:fontcolor=${fontColor}:x=(w-text_w)/2:y=${yExpr}${boxPart}:enable='between(t\\,${sub.startTime.toFixed(3)}\\,${sub.endTime.toFixed(3)})'`
 
       filterParts.push(`[${lastLabel}]${dtFilter}[${nextLabel}]`)
       lastLabel = nextLabel

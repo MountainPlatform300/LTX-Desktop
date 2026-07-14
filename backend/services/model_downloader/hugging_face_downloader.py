@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import contextlib
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Generator
 from pathlib import Path
 from threading import Lock
 from typing import Any
@@ -40,7 +40,7 @@ def _make_progress_tqdm_class(callback: Callable[[int], None]) -> type:
 
 
 @contextlib.contextmanager
-def _patch_download_progress(callback: Callable[[int], None]) -> Iterator[None]:
+def _patch_download_progress(callback: Callable[[int], None]) -> Generator[None, None, None]:
     """Temporarily monkey-patch ``huggingface_hub.file_download.http_get``
     and ``xet_get`` to inject a custom tqdm bar that forwards progress to
     *callback*.

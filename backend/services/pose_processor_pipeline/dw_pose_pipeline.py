@@ -353,8 +353,8 @@ class DWPosePipeline:
         y_locations = np.argmax(y_flat, axis=1)
         locations = np.stack((x_locations, y_locations), axis=-1).astype(np.float32)
 
-        max_val_x = np.amax(x_flat, axis=1)
-        max_val_y = np.amax(y_flat, axis=1)
+        max_val_x = cast(Any, np.amax(x_flat, axis=1))
+        max_val_y = cast(Any, np.amax(y_flat, axis=1))
 
         mask = max_val_x > max_val_y
         max_val_x[mask] = max_val_y[mask]
@@ -587,12 +587,12 @@ class DWPosePipeline:
 
         boxes = self._detect_person_boxes(frame)
         if boxes.size == 0:
-            return cast(FrameArray, np.zeros(frame.shape, dtype=np.uint8))
+            return np.zeros(frame.shape, dtype=np.uint8)
 
         images, centers, scales = self._preprocess_pose(frame, boxes)
         keypoints, scores = self._infer_pose_model(images)
         if keypoints.size == 0:
-            return cast(FrameArray, np.zeros(frame.shape, dtype=np.uint8))
+            return np.zeros(frame.shape, dtype=np.uint8)
 
         rescaled_keypoints = self._rescale_keypoints(keypoints, centers, scales)
         instances = self._format_instances(rescaled_keypoints, scores)

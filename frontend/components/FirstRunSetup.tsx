@@ -3,6 +3,9 @@ import { ApiClient, type ApiRequestBodyOf, type ApiSuccessOf } from '../lib/api-
 import { logger } from '../lib/logger'
 import { useHfAuth } from '../hooks/use-hf-auth'
 import { useHfModelAccess } from '../hooks/use-hf-model-access'
+import { useImageGenerationModelSpecs } from '../hooks/use-image-generation-model-specs'
+import type { ImageModelSpec } from '../lib/image-generation-model-specs'
+import { InfoHint } from './lora/trainingFormParts'
 import { useAppSettings } from '../contexts/AppSettingsContext'
 import './FirstRunSetup.css'
 
@@ -43,6 +46,7 @@ function uniqueCpIds(cpIds: readonly ModelCheckpointID[]): ModelCheckpointID[] {
 function buildAccessCheckpointIds(
   ltxRecommendation: LtxRecommendation | null,
   imgGenRecommendation: ImgGenRecommendation | null,
+  optionalImageCpIds: readonly ModelCheckpointID[] = [],
 ): ModelCheckpointID[] {
   if (!ltxRecommendation || !imgGenRecommendation) return []
 
@@ -53,12 +57,14 @@ function buildAccessCheckpointIds(
   if (imgGenRecommendation.cp_to_download) {
     cpIds.push(imgGenRecommendation.cp_to_download)
   }
+  cpIds.push(...optionalImageCpIds)
   return uniqueCpIds(cpIds)
 }
 
 function buildDownloadSteps(
   ltxRecommendation: LtxRecommendation,
   imgGenRecommendation: ImgGenRecommendation,
+  optionalImageCpIds: readonly ModelCheckpointID[] = [],
 ): DownloadStepSpec[] {
   const cpIds: ModelCheckpointID[] = []
   if (ltxRecommendation.status === 'download') {
@@ -68,7 +74,15 @@ function buildDownloadSteps(
     cpIds.push(imgGenRecommendation.cp_to_download)
   }
   const unique = uniqueCpIds(cpIds)
-  return unique.length > 0 ? [{ type: 'download', cpIds: unique }] : []
+  const steps: DownloadStepSpec[] = unique.length > 0 ? [{ type: 'download', cpIds: unique }] : []
+  // Optional image models ride in a separate step so the required bundle
+  // completes (and the app is usable) even if a large optional download is
+  // deselected mid-setup. Each selected checkpoint downloads in one session.
+  const optional = uniqueCpIds(optionalImageCpIds)
+  if (optional.length > 0) {
+    steps.push({ type: 'download', cpIds: optional })
+  }
+  return steps
 }
 
 
@@ -93,6 +107,13 @@ export function LaunchGate({
   const [actionError, setActionError] = useState<string | null>(null)
   const [isActionPending, setIsActionPending] = useState(false)
   const [requiredCheckpointIds, setRequiredCheckpointIds] = useState<ModelCheckpointID[]>([])
+  const [selectedOptionalImageCpIds, setSelectedOptionalImageCpIds] = useState<ModelCheckpointID[]>([])
+  const latestLtxRecommendationRef = useRef<LtxRecommendation | null>(null)
+  const latestImgGenRecommendationRef = useRef<ImgGenRecommendation | null>(null)
+  const { modelSpecs: imageModelSpecsResponse } = useImageGenerationModelSpecs()
+  const optionalImageSpecs: ImageModelSpec[] = (imageModelSpecsResponse?.models ?? []).filter(
+    (s) => s.id !== 'z-image-turbo',
+  )
   const { hfAuthStatus, hfAuthPolling, startHuggingFaceLogin } = useHfAuth(currentStep === 'location')
   const { accessMap, allAuthorized } = useHfModelAccess(requiredCheckpointIds, hfAuthStatus)
   const { saveLtxApiKey } = useAppSettings()
@@ -161,8 +182,25 @@ export function LaunchGate({
     }
 
     setInstallPath(settingsResult.data.modelsDir ?? '')
-    setRequiredCheckpointIds(buildAccessCheckpointIds(ltxResult.data, imgGenResult.data))
-  }, [licenseOnly])
+    latestLtxRecommendationRef.current = ltxResult.data
+    latestImgGenRecommendationRef.current = imgGenResult.data
+    setRequiredCheckpointIds(
+      buildAccessCheckpointIds(ltxResult.data, imgGenResult.data, selectedOptionalImageCpIds),
+    )
+  }, [licenseOnly, selectedOptionalImageCpIds])
+
+  // Recompute the HF access-check list when the user toggles an optional image
+  // model so gated repos (Ideogram 4, FLUX.1 Krea) are included in the access
+  // probe without a full recommendation refetch.
+  useEffect(() => {
+    setRequiredCheckpointIds(
+      buildAccessCheckpointIds(
+        latestLtxRecommendationRef.current,
+        latestImgGenRecommendationRef.current,
+        selectedOptionalImageCpIds,
+      ),
+    )
+  }, [selectedOptionalImageCpIds])
 
   const startDownloadStep = useCallback(async (step: DownloadStepSpec) => {
     setDownloadProgress(null)
@@ -199,8 +237,13 @@ export function LaunchGate({
 
         await refreshModelRecommendations()
 
-        // TODO: Get actual available space
-        setAvailableSpace('1.8 TB')
+        // Real free space on the drive that will hold the downloaded models.
+        try {
+          const space = await window.electronAPI.getAvailableDiskSpace?.()
+          if (space) setAvailableSpace(space.label)
+        } catch (e) {
+          logger.error(`Available space check failed: ${e}`)
+        }
       } catch (e) {
         logger.error(`Init error: ${e}`)
       }
@@ -285,9 +328,15 @@ export function LaunchGate({
       }
       const nextLtxRecommendation = ltxResult.data
       const nextImgGenRecommendation = imgGenResult.data
-      setRequiredCheckpointIds(buildAccessCheckpointIds(nextLtxRecommendation, nextImgGenRecommendation))
+      setRequiredCheckpointIds(
+        buildAccessCheckpointIds(nextLtxRecommendation, nextImgGenRecommendation, selectedOptionalImageCpIds),
+      )
 
-      const downloadSteps = buildDownloadSteps(nextLtxRecommendation, nextImgGenRecommendation)
+      const downloadSteps = buildDownloadSteps(
+        nextLtxRecommendation,
+        nextImgGenRecommendation,
+        selectedOptionalImageCpIds,
+      )
       if (downloadSteps.length === 0) {
         setCurrentStep('complete')
         return
@@ -768,10 +817,90 @@ export function LaunchGate({
                   </div>
                 </div>
               )}
+
+              {/* Optional image models — downloadable now, inference wired later.
+                  Unchecked by default (10–26 GB each). Selected entries join the
+                  install download queue; gated ones also join the HF access check. */}
+              {optionalImageSpecs.length > 0 && (
+                <div style={{
+                  marginTop: 24,
+                  background: '#2e3445',
+                  borderRadius: 12,
+                  padding: '14px 18px',
+                }}>
+                  <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <label style={{ fontSize: 13, fontWeight: 600, color: '#ffffff' }}>
+                      More image models
+                      <span style={{ fontSize: 11, color: '#A98BD9', marginLeft: 8, fontWeight: 400 }}>
+                        Optional
+                      </span>
+                    </label>
+                    <InfoHint
+                      content="Optional open-weight image models (Ideogram 4.0, Krea 2, FLUX.1 Krea). Downloadable now; in-app inference is wired in a follow-up, so each shows as \u201CComing soon\u201D in the Gen Space picker until then. You can also download them later from the image model picker."
+                    />
+                  </div>
+                  <p style={{ fontSize: 11, color: '#888', marginBottom: 12 }}>
+                    These are large (10\u201326 GB). Pick the ones you want now, or skip and download later.
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {optionalImageSpecs.map((spec) => {
+                      const checked = selectedOptionalImageCpIds.includes(spec.checkpoint_id)
+                      return (
+                        <label
+                          key={spec.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            background: '#1a1a1a',
+                            borderRadius: 8,
+                            padding: '10px 14px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              setSelectedOptionalImageCpIds((current) =>
+                                e.target.checked
+                                  ? [...current, spec.checkpoint_id]
+                                  : current.filter((id) => id !== spec.checkpoint_id),
+                              )
+                            }}
+                            style={{ cursor: 'pointer' }}
+                          />
+                          <span style={{ fontSize: 13, color: '#ffffff', fontWeight: 500 }}>
+                            {spec.display_name}
+                          </span>
+                          <span style={{ fontSize: 11, color: '#a0a0a0' }}>
+                            {(spec.size_bytes / 1_000_000_000).toFixed(1)} GB
+                          </span>
+                          {spec.gated && (
+                            <span style={{
+                              fontSize: 10,
+                              color: '#f59e0b',
+                              background: 'rgba(245,158,11,0.12)',
+                              padding: '2px 8px',
+                              borderRadius: 9999,
+                              fontWeight: 600,
+                            }}>
+                              Gated
+                            </span>
+                          )}
+                          <span style={{ marginLeft: 'auto' }}>
+                            <InfoHint
+                              content={`${spec.description}\n\nLicense: ${spec.license}\nSize: ${(spec.size_bytes / 1_000_000_000).toFixed(1)} GB\n${spec.gated ? 'Gated on HuggingFace \u2014 accept the license on the repo page and sign in to download.' : 'Not gated.'}\nInference: coming soon (downloadable now).`}
+                            />
+                          </span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
-
-          {/* Step 3: Installing */}
           {currentStep === 'installing' && (
             <div style={{
               position: 'relative',
@@ -1036,7 +1165,9 @@ export function LaunchGate({
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
-          <div style={{ fontSize: 11, color: '#666' }}>© 2026 Lightricks</div>
+          <div style={{ fontSize: 11, color: '#666' }}>
+            © 2026 Lightricks and LTX Desktop contributors
+          </div>
 
           <div style={{ display: 'flex', gap: 10 }}>
             {/* Next/Install/Finish Button */}

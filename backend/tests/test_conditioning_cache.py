@@ -17,12 +17,34 @@ class TestConditioningCache:
         key = ConditioningCacheKey("video.mp4", "canny")
         assert cache.get(key) is None
 
-    def test_put_then_get_returns_entry(self):
+    def test_put_then_get_returns_entry(self, tmp_path: Path):
         cache = ConditioningCache()
         key = ConditioningCacheKey("video.mp4", "canny")
-        entry = ConditioningCacheEntry("/tmp/control.mp4", 121, 24.0)
+        control = tmp_path / "control.mp4"
+        control.write_bytes(b"data")
+        entry = ConditioningCacheEntry(str(control), 121, 24.0)
         cache.put(key, entry)
         assert cache.get(key) == entry
+
+    def test_key_changes_with_source_or_canonical_shape(self):
+        base = ConditioningCacheKey(
+            "video.mp4", "canny", 10, 100, 960, 576, 121, 24.0
+        )
+
+        assert base != base._replace(source_mtime_ns=11)
+        assert base != base._replace(source_size=101)
+        assert base != base._replace(frame_count=193)
+        assert base != base._replace(width=576, height=960)
+
+    def test_get_drops_entry_when_cached_file_was_removed(self, tmp_path: Path):
+        cache = ConditioningCache()
+        key = ConditioningCacheKey("video.mp4", "canny")
+        control = tmp_path / "control.mp4"
+        control.write_bytes(b"data")
+        cache.put(key, ConditioningCacheEntry(str(control), 121, 24.0))
+        control.unlink()
+
+        assert cache.get(key) is None
 
     def test_cleanup_removes_files_and_clears(self, tmp_path: Path):
         cache = ConditioningCache()

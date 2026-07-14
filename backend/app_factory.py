@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import base64
 import hmac
-from collections.abc import Awaitable, Callable
+import logging
+from collections.abc import AsyncGenerator, Awaitable, Callable
+from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any
 
 from fastapi import FastAPI, Request
@@ -20,7 +22,12 @@ from _routes.hf_auth import router as hf_auth_router
 from _routes.health import router as health_router
 from _routes.ic_lora import router as ic_lora_router
 from _routes.image_gen import router as image_gen_router
+from _routes.image_edit import router as image_edit_router
 from _routes.models import router as models_router
+from _routes.media import router as media_router
+from _routes.lora_training import router as lora_training_router
+from _routes.lora_inference import router as lora_inference_router
+from _routes.queue import router as queue_router
 from _routes.suggest_gap_prompt import router as suggest_gap_prompt_router
 from _routes.retake import router as retake_router
 from _routes.runtime_policy import router as runtime_policy_router
@@ -31,6 +38,8 @@ from state import init_state_service
 
 if TYPE_CHECKING:
     from app_handler import AppHandler
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_ALLOWED_ORIGINS: list[str] = [
     "http://localhost:5173",
@@ -60,7 +69,46 @@ def create_app(
     """Create a configured FastAPI app bound to the provided handler."""
     init_state_service(handler)
 
-    app = FastAPI(title=title, responses=DEFAULT_ERROR_RESPONSES)
+    @asynccontextmanager
+    async def _lifespan(_app: FastAPI) -> AsyncGenerator[None]:
+        # The LoRA-trainer reconciler polls remote GPU jobs. The handler
+        # builds the runners in its constructor but defers `start()` to
+        # here so a bare AppHandler used outside a server (CLI tools,
+        # schema exporters) doesn't leak a daemon thread. Lifespan
+        # shutdown below joins the threads cleanly before the process exits.
+        handler.lora_training_runner.start()
+        # Local sprite/preview generation for the curation gallery; same
+        # deferral rationale (no daemon thread for bare AppHandler use).
+        handler.lora_clip_jobs_runner.start()
+        # Background target/variant derivation pipeline (frame edit -> local
+        # IC-LoRA drive or remote Kling); same deferral rationale.
+        handler.lora_derivation_runner.start()
+        # Durable batch generation queue. The handler loaded `queue.json`
+        # (with crash recovery) during AppHandler init; the runner thread
+        # is the sole claimer of pending items and cooperates with the
+        # other single-flight generation surfaces via the slot-free probe.
+        handler.queue_runner.start()
+        try:
+            yield
+        finally:
+            try:
+                handler.queue_runner.stop()
+            except Exception:
+                logger.exception("Failed to stop queue runner cleanly")
+            try:
+                handler.lora_training_runner.stop()
+            except Exception:
+                logger.exception("Failed to stop LoRA trainer runner cleanly")
+            try:
+                handler.lora_clip_jobs_runner.stop()
+            except Exception:
+                logger.exception("Failed to stop LoRA clip-jobs runner cleanly")
+            try:
+                handler.lora_derivation_runner.stop()
+            except Exception:
+                logger.exception("Failed to stop LoRA derivation runner cleanly")
+
+    app = FastAPI(title=title, responses=DEFAULT_ERROR_RESPONSES, lifespan=_lifespan)
     app.state.admin_token = admin_token  # type: ignore[attr-defined]
     app.add_middleware(
         CORSMiddleware,
@@ -156,10 +204,15 @@ def create_app(
     app.include_router(models_router)
     app.include_router(settings_router)
     app.include_router(image_gen_router)
+    app.include_router(image_edit_router)
     app.include_router(suggest_gap_prompt_router)
     app.include_router(retake_router)
     app.include_router(ic_lora_router)
     app.include_router(runtime_policy_router)
     app.include_router(hf_auth_router)
+    app.include_router(media_router)
+    app.include_router(lora_training_router)
+    app.include_router(lora_inference_router)
+    app.include_router(queue_router)
 
     return app

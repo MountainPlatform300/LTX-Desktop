@@ -9,6 +9,7 @@ import {
 import type { Asset, TimelineClip, Track, TextOverlayStyle } from '../../types/project-model'
 import { TEXT_PRESETS } from '../../types/project'
 import { COLOR_LABELS } from './video-editor-utils'
+import { confirmAction } from '../../components/ui/confirm-dialog'
 
 export type ClipContextMenuState =
   | { kind: 'background'; x: number; y: number }
@@ -468,9 +469,15 @@ function SingleClipMenu({
                 <ChevronRight className="h-3 w-3" />
               </button>
               <button
-                onClick={(e) => {
+                onClick={async (e) => {
                   e.stopPropagation()
-                  if (confirm(`Delete take ${(contextClip.takeIndex ?? (liveAsset!.activeTakeIndex ?? liveAsset!.takes!.length - 1)) + 1}?`)) {
+                  const takeNumber = (contextClip.takeIndex ?? (liveAsset!.activeTakeIndex ?? liveAsset!.takes!.length - 1)) + 1
+                  if (await confirmAction({
+                    title: `Delete take ${takeNumber}?`,
+                    message: 'This take will be removed from the asset.',
+                    confirmLabel: 'Delete take',
+                    variant: 'destructive',
+                  })) {
                     handleDeleteTake(contextClip.id)
                   }
                 }}

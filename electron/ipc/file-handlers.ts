@@ -100,7 +100,10 @@ function getUniqueDestinationPath(destDir: string, fileName: string): string {
 
 function copyToProjectAssetDirectory(srcPath: string, projectId: string): string {
   const assetsRoot = getProjectAssetsPath()
-  const destDir = path.join(assetsRoot, projectId)
+  // `projectId` is renderer-controlled; confine it to a single leaf so a
+  // crafted id (e.g. "../..") can't traverse out of the assets root.
+  const safeProjectId = path.basename(projectId)
+  const destDir = path.join(assetsRoot, safeProjectId)
   fs.mkdirSync(destDir, { recursive: true })
   const fileName = path.basename(srcPath)
   const destPath = getUniqueDestinationPath(destDir, fileName)
@@ -275,7 +278,8 @@ export function registerFileHandlers(): void {
   })
 
   handle('searchDirectoryForFiles', ({ directory, filenames }) => {
-    return searchDirectoryForFilesImpl(directory, filenames)
+    const validatedDir = validatePath(directory, getAllowedRoots())
+    return searchDirectoryForFilesImpl(validatedDir, filenames)
   })
 
   handle('addVisualAssetToProject', ({ srcPath, projectId, type }) => {

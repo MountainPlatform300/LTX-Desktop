@@ -163,7 +163,7 @@ export function LtxUpgradePrompt({
   }, [canStartUpgrade, recommendation.cps_to_download])
 
   return (
-    <div className="ltx-upgrade-backdrop fixed inset-0 z-[55] flex items-center justify-center bg-black/72 px-4 py-6 backdrop-blur-sm">
+    <div className="ltx-upgrade-backdrop fixed inset-0 z-[60] flex items-center justify-center bg-black/72 px-4 py-6 backdrop-blur-sm">
       <div
         className="absolute inset-0"
         onClick={() => {

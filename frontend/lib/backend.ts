@@ -1,8 +1,15 @@
 let cached: { url: string; token: string } | null = null
 
 export async function getBackendCredentials(): Promise<{ url: string; token: string }> {
-  if (!cached) cached = await window.electronAPI.getBackend()
-  return cached
+  if (cached && cached.url) return cached
+  // Only cache once the backend URL is actually available. An API call that
+  // races ahead of backend startup gets an empty URL from Electron; caching
+  // that would permanently route requests at the renderer (Vite) origin and
+  // yield HTML instead of JSON. Re-resolve until a real URL exists so the
+  // connection self-heals as soon as the backend is up.
+  const next = await window.electronAPI.getBackend()
+  if (next.url) cached = next
+  return next
 }
 
 export function resetBackendCredentials(): void {

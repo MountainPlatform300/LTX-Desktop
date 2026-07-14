@@ -1,4 +1,4 @@
-import { electronAPISchemas, type BackendHealthStatus } from '../shared/electron-api-schema'
+import { electronAPISchemas, type BackendHealthStatus, type WslSetupStateApi } from '../shared/electron-api-schema'
 import { HF_GATING_ENABLED } from '../shared/feature-flags'
 
 const { contextBridge, ipcRenderer, webUtils } = require('electron')
@@ -15,6 +15,14 @@ api.onPythonSetupProgress = (cb: (data: unknown) => void) => {
 
 api.removePythonSetupProgress = () => {
   ipcRenderer.removeAllListeners('python-setup-progress')
+}
+
+api.onWslSetupProgress = (cb: (data: WslSetupStateApi) => void) => {
+  const listener = (_: unknown, data: WslSetupStateApi) => cb(data)
+  ipcRenderer.on('wsl-setup-progress', listener)
+  return () => {
+    ipcRenderer.removeListener('wsl-setup-progress', listener)
+  }
 }
 
 api.onBackendHealthStatus = (cb: (data: BackendHealthStatus) => void) => {

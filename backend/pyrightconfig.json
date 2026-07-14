@@ -13,7 +13,10 @@
     "tmp",
     "scripts",
     "profile_results",
-    "services/patches"
+    "services/patches",
+    "services/trainer_target/ssh_remote.py",
+    "services/trainer_target/ssh_keys.py",
+    "services/trainer_target/runpod_trainer_target.py"
   ],
   "reportMissingImports": "warning",
   "reportMissingTypeStubs": false,

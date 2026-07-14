@@ -1,16 +1,19 @@
 # create-installer.ps1
-# Runs electron-builder to produce the installer (exe).
-# This is the ONLY build stage that needs code-signing secrets.
+# Runs electron-builder to produce the Windows installer.
+# Release beta.2 is unsigned; a later signed release will supply signing here.
 #
 # Expects the frontend to be built and python-embed to be ready.
 # See local-build.ps1 for the convenience wrapper that runs all stages.
 
 param(
     [switch]$Unpack,
-    [string]$Publish = ""
+    [string]$Publish = "never"
 )
 
 $ErrorActionPreference = "Stop"
+if ($PSVersionTable.PSVersion.Major -ge 7) {
+    $PSNativeCommandUseErrorActionPreference = $true
+}
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectDir = Split-Path -Parent $ScriptDir
@@ -24,8 +27,12 @@ if (-not (Test-Path "dist") -or -not (Test-Path "dist-electron")) {
     exit 1
 }
 
-if (-not (Test-Path "python-embed")) {
-    Write-Host "ERROR: Python environment not found. Run local-build.ps1 or prepare-python.ps1 first." -ForegroundColor Red
+if (-not (Test-Path "python-deps-hash.txt")) {
+    Write-Host "ERROR: Python dependency hash not found. Run local-build.ps1 first." -ForegroundColor Red
+    exit 1
+}
+if (-not $Unpack -and -not (Test-Path "python-runtime-manifest.json")) {
+    Write-Host "ERROR: Verified Python runtime manifest not found. Run 'pnpm python:package' first." -ForegroundColor Red
     exit 1
 }
 
@@ -59,13 +66,16 @@ if ($Unpack) {
     Write-Host "Run: $ExePath" -ForegroundColor Cyan
     Write-Host "`nTip: Just restart the app after code changes - no rebuild needed!" -ForegroundColor Green
 } else {
-    $Installer = Get-ChildItem -Path $ReleaseDir -Filter "*.exe" | Where-Object { $_.Name -like "*Setup*" } | Select-Object -First 1
-    if ($Installer) {
-        $InstallerSize = [math]::Round($Installer.Length / 1MB, 2)
-        Write-Host "`nInstaller: $($Installer.Name)" -ForegroundColor Cyan
-        Write-Host "Size: $InstallerSize MB" -ForegroundColor Cyan
-        Write-Host "Location: $($Installer.FullName)" -ForegroundColor Cyan
+    $InstallerPath = Join-Path $ReleaseDir "LTX-Desktop-Setup.exe"
+    if (-not (Test-Path $InstallerPath)) {
+        Write-Host "ERROR: Expected installer was not created: $InstallerPath" -ForegroundColor Red
+        exit 1
     }
+    $Installer = Get-Item $InstallerPath
+    $InstallerSize = [math]::Round($Installer.Length / 1MB, 2)
+    Write-Host "`nInstaller: $($Installer.Name)" -ForegroundColor Cyan
+    Write-Host "Size: $InstallerSize MB" -ForegroundColor Cyan
+    Write-Host "Location: $($Installer.FullName)" -ForegroundColor Cyan
 }
 
 Write-Host "`nNote: AI models (~150GB) will be downloaded on first run." -ForegroundColor Yellow

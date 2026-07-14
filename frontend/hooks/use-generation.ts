@@ -16,10 +16,12 @@ interface GenerationState {
 
 type GenerateVideoRequest = ApiRequestBodyOf<'generateVideo'>
 type GenerateImageRequest = ApiRequestBodyOf<'generateImage'>
+type GenerateImageEditRequest = ApiRequestBodyOf<'generateImageEdit'>
 
 interface UseGenerationReturn extends GenerationState {
   generate: (prompt: string, imagePath: string | null, settings: GenerationSettings, audioPath?: string | null) => Promise<void>
   generateImage: (prompt: string, settings: GenerationSettings) => Promise<void>
+  generateImageEdit: (prompt: string, settings: GenerationSettings, referenceImages: string[]) => Promise<void>
   cancel: () => void
   reset: () => void
 }
@@ -39,7 +41,7 @@ const IMAGE_ASPECT_RATIO_VALUE: Record<string, number> = {
   '21:9': 21 / 9,
 }
 
-function getImageDimensions(settings: GenerationSettings): { width: number; height: number } {
+export function getImageDimensions(settings: GenerationSettings): { width: number; height: number } {
   const shortSide = IMAGE_SHORT_SIDE_BY_RESOLUTION[settings.imageResolution]
   if (!shortSide) {
     throw new Error(`Unsupported image resolution mapping: ${settings.imageResolution}`)
@@ -67,6 +69,8 @@ function getPhaseMessage(phase: string): string {
       return 'Uploading audio...'
     case 'loading_model':
       return 'Loading model...'
+    case 'upscaling':
+      return 'Upscaling image...'
     case 'encoding_text':
       return 'Encoding prompt...'
     case 'inference':
@@ -411,10 +415,126 @@ export function useGeneration(): UseGenerationReturn {
     })
   }, [])
 
+  const generateImageEdit = useCallback(async (
+    prompt: string,
+    settings: GenerationSettings,
+    referenceImages: string[],
+  ) => {
+    // FLUX.2 [klein] 9B local image editing — single-flight synchronous call
+    // (no queue: editing is one-at-a-time). Reuses the shared generation
+    // progress endpoint + imagePaths result routing the txt2img path uses.
+    const numImages = settings.variations || 1
+    const isEdit = referenceImages.length > 0
+
+    setState({
+      isGenerating: true,
+      progress: 0,
+      statusMessage: isEdit ? 'Editing image...' : 'Generating image...',
+      videoPath: null,
+      imagePath: null,
+      imagePaths: [],
+      error: null,
+    })
+
+    abortControllerRef.current = new AbortController()
+
+    try {
+      const dims = getImageDimensions(settings)
+      const numSteps = settings.imageSteps || 4
+
+      const pollProgress = async () => {
+        const result = await ApiClient.getGenerationProgress()
+        if (!result.ok) return
+        const data = result.data
+        const currentImage = data.currentStep || 0
+        const totalImages = data.totalSteps || numImages
+        setState(prev => ({
+          ...prev,
+          progress: data.progress,
+          statusMessage: data.phase === 'loading_model'
+            ? 'Loading FLUX.2 Klein model...'
+            : data.phase === 'upscaling'
+              ? 'Upscaling image...'
+            : data.phase === 'inference'
+              ? numImages > 1
+                ? `${isEdit ? 'Editing' : 'Generating'} image ${currentImage + 1}/${totalImages}...`
+                : `${isEdit ? 'Editing' : 'Generating'} image...`
+              : data.phase === 'complete'
+                ? 'Complete!'
+                : 'Generating...',
+        }))
+      }
+
+      const progressInterval = setInterval(pollProgress, 500)
+
+      const editRequest: GenerateImageEditRequest = {
+        prompt,
+        width: dims.width,
+        height: dims.height,
+        numSteps,
+        numImages,
+        referenceImages,
+      }
+      const result = await ApiClient.generateImageEdit(editRequest, {
+        signal: abortControllerRef.current.signal,
+      })
+
+      clearInterval(progressInterval)
+      if (!result.ok) {
+        setState(prev => ({
+          ...prev,
+          isGenerating: false,
+          error: result,
+        }))
+        return
+      }
+
+      const payload = result.data
+      if (payload.status === 'complete') {
+        const rawPaths = payload.image_paths
+        if (rawPaths.length === 0) {
+          throw new Error('Image edit completed without output images')
+        }
+        setState({
+          isGenerating: false,
+          progress: 100,
+          statusMessage: 'Complete!',
+          videoPath: null,
+          imagePath: rawPaths[0],
+          imagePaths: rawPaths,
+          error: null,
+        })
+      } else if (payload.status === 'cancelled') {
+        setState(prev => ({
+          ...prev,
+          isGenerating: false,
+          statusMessage: 'Cancelled',
+        }))
+      } else {
+        throw new Error('Unexpected response from /api/generate-image-edit')
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        setState(prev => ({
+          ...prev,
+          isGenerating: false,
+          statusMessage: 'Cancelled',
+        }))
+      } else {
+        setState(prev => ({
+          ...prev,
+          isGenerating: false,
+          error: createLocalGenerationError(error instanceof Error ? error.message : 'Unknown error'),
+        }))
+      }
+    }
+  }, [])
+
   return {
     ...state,
     generate,
     generateImage,
+    generateImageEdit,
     cancel,
     reset,
   }

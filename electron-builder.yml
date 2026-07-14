@@ -1,6 +1,6 @@
-appId: com.lightricks.ltx-desktop
+appId: io.github.mountainplatform300.ltx-desktop
 productName: LTX Desktop
-copyright: Copyright © 2026 Lightricks
+copyright: Copyright © 2026 Lightricks and LTX Desktop contributors
 
 directories:
   output: release
@@ -38,14 +38,10 @@ win:
       arch:
         - x64
   icon: resources/icon.ico
-  artifactName: ${productName}-Setup.${ext}
-  azureSignOptions:
-    publisherName: Lightricks US Inc
-    endpoint: https://eus.codesigning.azure.net/
-    certificateProfileName: ltx-desktop-trusted
-    codeSigningAccountName: ltx-trusted
-    excludeEnvironmentCredential: true
-
+  artifactName: LTX-Desktop-Setup.${ext}
+  extraResources:
+    - from: python-runtime-manifest.json
+      to: python-runtime-manifest.json
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
@@ -61,7 +57,9 @@ mac:
   hardenedRuntime: true
   entitlements: resources/entitlements.mac.plist
   entitlementsInherit: resources/entitlements.mac.plist
-  notarize: true
+  # This beta is intentionally unsigned. Re-enable notarization together with
+  # Developer ID signing; never enable one without qualifying the other.
+  notarize: false
   signIgnore:
     # Skip non-binary files in the bundled Python environment during codesign.
     # Without this, @electron/osx-sign walks all ~25k files to find ~360 Mach-O
@@ -79,12 +77,9 @@ mac:
     - target: dmg
       arch:
         - arm64
-    - target: zip
-      arch:
-        - arm64
   icon: resources/icon.icns
   category: public.app-category.video
-  artifactName: ${productName}-${arch}.${ext}
+  artifactName: LTX-Desktop-${arch}.${ext}
 
 dmg:
   contents:
@@ -101,7 +96,10 @@ linux:
     - deb
   icon: resources/icons
   category: Video
-  artifactName: ${productName}-${arch}.${ext}
+  artifactName: LTX-Desktop-x64.${ext}
+  extraResources:
+    - from: python-runtime-manifest.json
+      to: python-runtime-manifest.json
 
 deb:
   depends:
@@ -117,5 +115,5 @@ deb:
 
 publish:
   provider: github
-  owner: Lightricks
-  repo: ltx-desktop
+  owner: MountainPlatform300
+  repo: LTX-Desktop

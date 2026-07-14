@@ -13,6 +13,7 @@ interface ViewContextType {
   setCurrentView: (view: ViewType) => void
   openProject: (projectId: string) => void
   goHome: () => void
+  openLoraTrainer: () => void
 }
 
 const ViewContext = createContext<ViewContextType | null>(null)
@@ -37,6 +38,11 @@ export function ViewProvider({ children }: { children: React.ReactNode }) {
     setCurrentView('home')
   }, [clearActiveProject])
 
+  const openLoraTrainer = useCallback(() => {
+    clearActiveProject()
+    setCurrentView('lora-trainer')
+  }, [clearActiveProject])
+
   useEffect(() => {
     if (currentView === 'project' && !activeProject) {
       setCurrentView('home')
@@ -44,7 +50,7 @@ export function ViewProvider({ children }: { children: React.ReactNode }) {
   }, [activeProject, currentView])
 
   return (
-    <ViewContext.Provider value={{ currentView, setCurrentView, openProject, goHome }}>
+    <ViewContext.Provider value={{ currentView, setCurrentView, openProject, goHome, openLoraTrainer }}>
       {children}
     </ViewContext.Provider>
   )

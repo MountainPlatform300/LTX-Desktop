@@ -1,20 +1,35 @@
 # LTX Desktop
 
-LTX Desktop is an open-source desktop app for generating videos with LTX models — locally on supported Windows/Linux NVIDIA GPUs, with an API mode for unsupported hardware and macOS.
+> **Unofficial fork.** This repository is forked from
+> [Lightricks/LTX-Desktop](https://github.com/Lightricks/LTX-Desktop) and is not
+> an official Lightricks release. It preserves upstream attribution while adding
+> additional LoRA training and workflow tools.
+
+LTX Desktop is an open-source desktop app for generating videos with
+LTX models—locally on supported Windows/Linux NVIDIA GPUs, with an API mode for
+unsupported hardware and macOS.
 
 > **Status: Beta.** Expect breaking changes.
 > Frontend architecture is under active refactor; large UI PRs may be declined for now (see [`CONTRIBUTING.md`](docs/CONTRIBUTING.md)).
 
 <p align="center">
+  <strong>Gen Space</strong><br>
   <img src="images/gen-space.png" alt="Gen Space" width="70%">
 </p>
 
 <p align="center">
+  <strong>Video Editor</strong><br>
   <img src="images/video-editor.png" alt="Video Editor" width="70%">
 </p>
 
 <p align="center">
-  <img src="images/timeline-gap-fill.png" alt="Timeline gap fill" width="70%">
+  <strong>LoRA Trainer</strong><br>
+  <img src="images/lora-trainer-overview.png" alt="LoRA Trainer dataset workspace" width="70%">
+</p>
+
+<p align="center">
+  <strong>Apply LoRA in Gen Space</strong><br>
+  <img src="images/apply-lora-genspace.png" alt="Apply a trained or imported LoRA in Gen Space" width="70%">
 </p>
 
 ## Features
@@ -25,6 +40,9 @@ LTX Desktop is an open-source desktop app for generating videos with LTX models 
 - Video edit generation (Retake)
 - Video Editor Interface
 - Video Editing Projects
+- Standard and IC-LoRA dataset creation, validation, training, recovery, and export
+- Local WSL2 or RunPod training with live GPU availability and billing controls
+- LoRA library, examples, validation media, prompt templates, and Gen Space inference
 
 ## Local vs API mode
 
@@ -63,9 +81,40 @@ In API-only mode, available resolutions/durations may be limited to what the API
 
 ## Install
 
-1. Download the latest installer from GitHub Releases: [Releases](../../releases)
-2. Install and launch **LTX Desktop**
-3. Complete first-run setup
+Download the newest installer from this repository's
+**[official Releases page](https://github.com/MountainPlatform300/LTX-Desktop/releases)**:
+
+- **Windows x64:** `LTX-Desktop-Setup.exe`
+- **macOS Apple Silicon:** `LTX-Desktop-arm64.dmg`
+- **Linux x64:** `.deb` for Ubuntu/Debian or `.AppImage` for other compatible distributions
+
+> **Unsigned beta:** Windows SmartScreen and macOS Gatekeeper will
+> show warnings because these installers are not yet Authenticode-signed or
+> Apple-notarized. Confirm the filename and official repository before
+> proceeding. Do not use installers from mirrors, comments, or chat links.
+
+See the **[step-by-step download and installation guide](docs/DOWNLOAD.md)** for
+GUI instructions, OS warning screens, first-run downloads, and optional
+checksum verification.
+
+### Run from source (advanced)
+
+Running from source is intended for developers and advanced users. It creates a
+development checkout rather than installing a packaged desktop release.
+
+Install Git, Node.js 24, pnpm 10.30.3, `uv`, and Python 3.13.12, then run:
+
+```bash
+git clone https://github.com/MountainPlatform300/LTX-Desktop.git
+cd LTX-Desktop
+pnpm setup:dev
+pnpm dev
+```
+
+The setup step downloads the JavaScript and Python dependencies, which can use
+significant disk space. For development commands, see
+[Development setup](#development-quickstart). To create a packaged application
+from source, see the [installer build guide](docs/INSTALLER.md).
 
 ## First run & data locations
 
@@ -81,7 +130,7 @@ On first launch you may be prompted to review/accept model license terms (licens
 
 Text encoding: to generate videos you must configure text encoding:
 
-- **LTX API key** (cloud text encoding) — **text encoding via the API is completely FREE** and highly recommended to speed up inference and save memory. Generate a free API key at the [LTX Console](https://console.ltx.video/). [Read more](https://ltx.io/model/model-blog/ltx-2-better-control-for-real-workflows).
+- **LTX API key** (cloud text encoding) — **text encoding via the API is completely FREE** and highly recommended to speed up inference and save memory. Generate a free API key at the [LTX Console](https://console.ltx.video/). [Read about API-key authentication](https://docs.ltx.video/authentication).
 - **Local Text Encoder** (extra download; enables fully-local operation on supported Windows hardware) — if you don't wish to generate an API key, you can encode text locally via the settings menu.
 
 ## API keys, cost, and privacy
@@ -96,9 +145,9 @@ The LTX API is used for:
 
 An LTX API key is required in API-only mode, but optional on Windows/Linux local mode if you enable the Local Text Encoder.
 
-Generate a FREE API key at the [LTX Console](https://console.ltx.video/). Text encoding is free; video generation API usage is paid. [Read more](https://ltx.io/model/model-blog/ltx-2-better-control-for-real-workflows).
+Generate a FREE API key at the [LTX Console](https://console.ltx.video/). Text encoding is free; video generation API usage is paid. [Read about API-key authentication](https://docs.ltx.video/authentication).
 
-When you use API-backed features, prompts and media inputs are sent to the API service. Your API key is stored locally in your app data folder — treat it like a secret.
+When you use API-backed features, prompts and media inputs are sent to the API service. API credentials are encrypted at rest using OS-backed key storage and are never returned by the settings API.
 
 ### fal API key (optional)
 
@@ -139,9 +188,10 @@ graph TD
 
 Prereqs:
 
-- Node.js
+- Node.js 24
+- pnpm 10.30.3
 - `uv` (Python package manager)
-- Python 3.12+
+- Python 3.13.12
 - Git
 
 Setup:
@@ -181,12 +231,24 @@ Building installers:
 
 ## Telemetry
 
-LTX Desktop collects minimal, anonymous usage analytics (app version, platform, and a random installation ID) to help prioritize development. No personal information or generated content is collected. Analytics is enabled by default and can be disabled in **Settings > General > Anonymous Analytics**. See [`TELEMETRY.md`](docs/TELEMETRY.md) for details.
+This fork retains upstream minimal, pseudonymous usage analytics (app version,
+platform, fork identifier, and a random installation ID). Events are sent to
+Lightricks; no prompts, media, credentials, or paths are included. Analytics is
+enabled by default and can be disabled in **Settings > General > Usage
+Analytics**. See [`TELEMETRY.md`](docs/TELEMETRY.md) for connection-metadata and
+server-retention caveats.
 
 ## Docs
 
+- [`DOWNLOAD.md`](docs/DOWNLOAD.md) — beginner-friendly download, installation, and verification
 - [`INSTALLER.md`](docs/INSTALLER.md) — building installers
+- [`RELEASE.md`](docs/RELEASE.md) — release gates, installer qualification, and artifact evidence
+- [`RELEASE_NOTES_1.1.0-beta.2.md`](docs/RELEASE_NOTES_1.1.0-beta.2.md) — unsigned installer beta notes
+- [`ANNOUNCEMENT.md`](docs/ANNOUNCEMENT.md) — reviewed launch-post draft and publication checklist
 - [`TELEMETRY.md`](docs/TELEMETRY.md) — telemetry and privacy
+- [`NETWORK_SERVICES.md`](docs/NETWORK_SERVICES.md) — external services and data flows
+- [`LORA_TRAINER.md`](docs/LORA_TRAINER.md) — dataset, training, RunPod, billing, and export workflows
+- [`SECURITY.md`](SECURITY.md) — security model and private vulnerability reporting
 - [`backend/architecture.md`](backend/architecture.md) — backend architecture
 
 ## Contributing

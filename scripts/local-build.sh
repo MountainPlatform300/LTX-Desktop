@@ -131,6 +131,7 @@ echo ""
 # Step 3: Build frontend
 # ============================================================
 echo "[3/3] Building frontend and Electron app..."
+node "$SCRIPT_DIR/generate-python-deps-hash.mjs"
 pnpm run build:frontend
 echo ""
 

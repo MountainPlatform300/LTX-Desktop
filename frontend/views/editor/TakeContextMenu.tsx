@@ -2,6 +2,7 @@ import React, { type RefObject } from 'react'
 import { Plus, Copy, Eye, Trash2 } from 'lucide-react'
 import type { Asset, AssetTake } from '../../types/project-model'
 import { useEditorActions } from './editor-store'
+import { confirmAction } from '../../components/ui/confirm-dialog'
 
 export interface TakeContextMenuProps {
   tcAsset: Asset
@@ -84,8 +85,13 @@ export function TakeContextMenu({
         <>
           <div className="h-px bg-zinc-700 my-1" />
           <button
-            onClick={() => {
-              if (confirm(`Delete take ${takeIndex + 1}?`)) {
+            onClick={async () => {
+              if (await confirmAction({
+                title: `Delete take ${takeIndex + 1}?`,
+                message: 'This take will be removed from the asset.',
+                confirmLabel: 'Delete take',
+                variant: 'destructive',
+              })) {
                 actions.deleteAssetTake(tcAsset.id, takeIndex)
               }
               setTakeContextMenu(null)

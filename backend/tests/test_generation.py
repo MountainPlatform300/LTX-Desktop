@@ -83,7 +83,44 @@ class TestGenerate:
         pipeline = fake_services.fast_video_pipeline
         assert len(pipeline.generate_calls) == 1
 
-    def test_already_running(self, client, test_state):
+    def test_t2v_cancel_during_pipeline_load_returns_cancelled(
+        self, client, test_state, monkeypatch, create_fake_model_files
+    ):
+        """A Stop clicked during the cold pipeline load must land — the run
+        returns `cancelled`, not `complete`.
+
+        Regression: start_generation used to run after load_gpu_pipeline, so a
+        cancel during the load hit no running generation and was silently
+        dropped. Now start_generation runs first, so the cancel flips the state
+        to cancelled and generate_video's pre-inference cancel check unwinds.
+        """
+        create_fake_model_files()
+        _enable_local_text_encoding(test_state)
+
+        real_load = test_state.pipelines.load_gpu_pipeline
+
+        def load_and_cancel(*args, **kwargs):
+            test_state.generation.cancel_generation()
+            return real_load(*args, **kwargs)
+
+        monkeypatch.setattr(test_state.pipelines, "load_gpu_pipeline", load_and_cancel)
+
+        r = client.post(
+            "/api/generate",
+            json={
+                "prompt": "A beautiful sunset",
+                "resolution": "1080p",
+                "model": "fast",
+                "duration": 5,
+                "fps": 24,
+                "cameraMotion": "none",
+            },
+        )
+
+        assert r.status_code == 200
+        assert r.json()["status"] == "cancelled"
+
+
         _fake_running_generation_state(test_state)
 
         r = client.post("/api/generate", json=_T2V_JSON)
@@ -127,7 +164,7 @@ class TestGenerate:
         pipeline = fake_services.fast_video_pipeline
         call = pipeline.generate_calls[0]
         assert call["width"] == 960
-        assert call["height"] == 512
+        assert call["height"] == 576
 
     def test_resolution_mapping_720p(self, client, test_state, fake_services, create_fake_model_files):
         create_fake_model_files()
@@ -1094,9 +1131,35 @@ class TestGenerateCancel:
         assert data["status"] == "cancelling"
 
     def test_cancel_no_active(self, client):
+        # With no running generation, cancel acknowledges (status "cancelling")
+        # and records a pre-load cancel token so a subsequent generate that's
+        # still in its pipeline-load window unwinds instead of completing. The
+        # token is cleared at the start of the next generate, so an idle cancel
+        # can't poison a later run.
         r = client.post("/api/generate/cancel")
         assert r.status_code == 200
-        assert r.json()["status"] == "no_active_generation"
+        assert r.json()["status"] == "cancelling"
+
+    def test_cancel_also_cancels_running_queue_item(self, client, test_state):
+        # Regression: a Stop on a queued generation must mark the running
+        # queue ledger entry cancelled directly — not just flip the
+        # generation-handler flag. Otherwise a stuck inference call that
+        # never returns to the runner leaves the item `running` on disk,
+        # and crash recovery re-queues it on every restart.
+        test_state.queue_runner.stop()
+        created = client.post(
+            "/api/queue/items",
+            json={"payload": {"kind": "video", "request": {"prompt": "stuck"}}},
+        ).json()
+        test_state.queue.claim_next_pending()  # -> running
+        _fake_running_generation_state(test_state)
+
+        r = client.post("/api/generate/cancel")
+        assert r.status_code == 200
+        assert r.json()["status"] == "cancelling"
+
+        item = client.get(f"/api/queue/items/{created['id']}").json()
+        assert item["status"] == "cancelled"
 
 
 class TestGenerateModelSpecs:
@@ -1115,12 +1178,66 @@ class TestGenerateModelSpecs:
         ]
 
 
+class TestGenerateImageModelSpecs:
+    def test_image_models_specs_endpoint_returns_catalog(self, client):
+        r = client.get("/api/generate/image-models-specs")
+        assert r.status_code == 200
+
+        models = r.json()["models"]
+        ids = [m["id"] for m in models]
+        assert ids[0] == "z-image-turbo"
+        assert "flux-2-klein-9b" in ids
+        # The pruned catalog only carries Z-Image + Klein.
+        assert set(ids) == {"z-image-turbo", "flux-2-klein-9b"}
+
+        by_id = {m["id"]: m for m in models}
+        # Z-Image is the available, non-gated default.
+        assert by_id["z-image-turbo"]["inference_status"] == "available"
+        assert by_id["z-image-turbo"]["gated"] is False
+        # Klein is the local edit model (available + gated + is_edit_model).
+        assert by_id["flux-2-klein-9b"]["inference_status"] == "available"
+        assert by_id["flux-2-klein-9b"]["gated"] is True
+        assert by_id["flux-2-klein-9b"]["is_edit_model"] is True
+        # Fresh test models dir → nothing downloaded yet.
+        assert all(m["downloaded"] is False for m in models)
+        # repo_id is surfaced so the picker can probe access / open the repo page.
+        assert by_id["flux-2-klein-9b"]["repo_id"] == "black-forest-labs/FLUX.2-klein-9B"
+
+    def test_image_models_specs_mark_downloaded_when_present(self, client, create_fake_model_files):
+        create_fake_model_files(include_zit=True)
+        r = client.get("/api/generate/image-models-specs")
+        assert r.status_code == 200
+        by_id = {m["id"]: m for m in r.json()["models"]}
+        assert by_id["z-image-turbo"]["downloaded"] is True
+        # Klein still not downloaded.
+        assert by_id["flux-2-klein-9b"]["downloaded"] is False
+
+
+class TestGenerateImageModelSelection:
+    def test_explicit_z_image_model_happy_path(self, client, create_fake_model_files):
+        create_fake_model_files(include_zit=True)
+        r = client.post(
+            "/api/generate-image",
+            json={"prompt": "A cat", "model": "z-image-turbo"},
+        )
+        assert r.status_code == 200
+        assert r.json()["status"] == "complete"
+
+    def test_unknown_model_falls_back_to_z_image(self, client, create_fake_model_files):
+        create_fake_model_files(include_zit=True)
+        r = client.post(
+            "/api/generate-image",
+            json={"prompt": "A cat", "model": "does-not-exist"},
+        )
+        assert r.status_code == 200
+        assert r.json()["status"] == "complete"
+
+
 class TestGenerationProgress:
     def test_idle(self, client):
         r = client.get("/api/generation/progress")
         assert r.status_code == 200
         assert r.json()["status"] == "idle"
-
     def test_running(self, client, test_state):
         _fake_running_generation_state(test_state)
         test_state.generation.update_progress("inference", 50, 4, 8)

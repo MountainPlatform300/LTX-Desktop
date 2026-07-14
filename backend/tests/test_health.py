@@ -1,7 +1,12 @@
 """Tests for /health and /api/gpu-info endpoints."""
 
+from starlette.testclient import TestClient
+
+from _routes import health as health_routes
+from app_factory import create_app
 from state.app_state_types import GpuSlot, VideoPipelineState
 from tests.fakes.services import FakeFastVideoPipeline
+from tests.http_error_assertions import assert_http_error
 
 
 def _set_video_pipeline(state):
@@ -90,3 +95,62 @@ class TestGpuInfo:
         assert data["gpu_available"] is True
         assert data["gpu_name"] == "Apple Silicon (MPS)"
         assert data["vram_gb"] == 36
+
+
+class TestShutdown:
+    def test_managed_backend_requires_admin_token(self, test_state, monkeypatch):
+        called = False
+
+        def fake_shutdown() -> None:
+            nonlocal called
+            called = True
+
+        monkeypatch.setattr(health_routes, "_shutdown_process", fake_shutdown)
+        app = create_app(handler=test_state, admin_token="test-admin-token")
+
+        with TestClient(app, client=("127.0.0.1", 50000)) as local_client:
+            response = local_client.post("/api/system/shutdown")
+
+        assert_http_error(
+            response,
+            status_code=403,
+            code="HTTP_403",
+            message="Admin token required",
+        )
+        assert called is False
+
+    def test_managed_backend_accepts_admin_token(self, test_state, monkeypatch):
+        called = False
+
+        def fake_shutdown() -> None:
+            nonlocal called
+            called = True
+
+        monkeypatch.setattr(health_routes, "_shutdown_process", fake_shutdown)
+        app = create_app(handler=test_state, admin_token="test-admin-token")
+
+        with TestClient(app, client=("127.0.0.1", 50000)) as local_client:
+            response = local_client.post(
+                "/api/system/shutdown",
+                headers={"X-Admin-Token": "test-admin-token"},
+            )
+
+        assert response.status_code == 200
+        assert response.json() == {"status": "shutting_down"}
+        assert called is True
+
+    def test_explicit_insecure_backend_remains_compatible(self, test_state, monkeypatch):
+        called = False
+
+        def fake_shutdown() -> None:
+            nonlocal called
+            called = True
+
+        monkeypatch.setattr(health_routes, "_shutdown_process", fake_shutdown)
+        app = create_app(handler=test_state)
+
+        with TestClient(app, client=("127.0.0.1", 50000)) as local_client:
+            response = local_client.post("/api/system/shutdown")
+
+        assert response.status_code == 200
+        assert called is True

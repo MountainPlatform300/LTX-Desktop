@@ -13,9 +13,12 @@ from runtime_config.model_download_specs import (
     DEPTH_PROCESSOR_CP_ID,
     IMG_GEN_MODEL_CP_ID,
     LTXLocalModelDeprecated,
+    PERSON_DETECTOR_CP_ID,
+    POSE_PROCESSOR_CP_ID,
     get_ic_loras_cp_ids,
     get_latest_ltx_model_id,
     get_ltx_model_spec,
+    get_ltx_overlay_cp_ids,
     resolve_downloading_dir,
     resolve_model_path,
 )
@@ -64,6 +67,45 @@ class TestRecommendations:
         assert response.status_code == 200
         assert response.json()["status"] == "ok"
 
+    def test_ltx_recommendation_surfaces_dev_quality_base_overlay_when_enabled(
+        self, client, test_state, create_fake_model_files
+    ):
+        create_fake_model_files()
+        spec = _current_ltx_spec()
+        test_state.state.app_settings.use_dev_quality_base = True
+
+        # Required bundle is downloaded but the opt-in overlay (dev + distilled
+        # v1.1 LoRA) is not -> recommendation prompts the overlay downloads in
+        # order. IC-LoRA generation falls back to distilled until then.
+        response = client.get("/api/models/ltx-recommendation")
+        assert response.status_code == 200
+        body = response.json()
+        assert body["status"] == "download"
+        assert body["cps_to_download"] == [spec.quality_base_cp, spec.distilled_lora_cp]
+
+        # Once the overlay is downloaded, recommendation returns ok again.
+        for cp_id in get_ltx_overlay_cp_ids(get_latest_ltx_model_id()):
+            path = _cp_path(test_state, cp_id)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b"\x00" * 1024)
+        response = client.get("/api/models/ltx-recommendation")
+        assert response.status_code == 200
+        assert response.json()["status"] == "ok"
+
+    def test_ltx_recommendation_ignores_dev_overlay_when_setting_off(
+        self, client, test_state, create_fake_model_files
+    ):
+        create_fake_model_files()
+        # Overlay checkpoints present but the setting is off -> not required,
+        # recommendation stays ok (overlay is opt-in, never forced).
+        for cp_id in get_ltx_overlay_cp_ids(get_latest_ltx_model_id()):
+            path = _cp_path(test_state, cp_id)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b"\x00" * 1024)
+        response = client.get("/api/models/ltx-recommendation")
+        assert response.status_code == 200
+        assert response.json()["status"] == "ok"
+
     def test_ltx_recommendation_reports_missing_text_encoder_for_current_model(self, client, test_state, create_fake_model_files):
         create_fake_model_files()
         text_encoder_path = _cp_path(test_state, _current_ltx_spec().text_encoder_cp)
@@ -107,6 +149,8 @@ class TestRecommendations:
         assert response.json()["cps_to_download"] == [
             *get_ic_loras_cp_ids(_current_ltx_spec().ic_loras_spec),
             DEPTH_PROCESSOR_CP_ID,
+            PERSON_DETECTOR_CP_ID,
+            POSE_PROCESSOR_CP_ID,
         ]
 
         create_fake_ic_lora_files()
@@ -270,3 +314,65 @@ class TestCheckpointDeletion:
         assert response.status_code == 200
         assert response.json()["status"] == "ok"
         assert not img_gen_path.exists()
+
+
+class TestCheckpointPathAndLoadFromPath:
+    def test_checkpoint_path_reports_exists(self, client, test_state):
+        # Not present yet.
+        r = client.get("/api/models/checkpoint-path", params={"cp_id": IMG_GEN_MODEL_CP_ID})
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["cp_id"] == IMG_GEN_MODEL_CP_ID
+        assert body["exists"] is False
+        assert body["path"].endswith("Z-Image-Turbo")
+
+        # Materialize the folder with a file → exists flips to True.
+        dst = _cp_path(test_state, IMG_GEN_MODEL_CP_ID)
+        dst.mkdir(parents=True, exist_ok=True)
+        (dst / "model.safetensors").write_bytes(b"\x00")
+        r = client.get("/api/models/checkpoint-path", params={"cp_id": IMG_GEN_MODEL_CP_ID})
+        assert r.status_code == 200
+        assert r.json()["exists"] is True
+
+    def test_load_from_path_links_or_copies_folder(self, client, test_state, tmp_path):
+        # A user-supplied folder containing the Z-Image checkpoint.
+        src = tmp_path / "my-z-image"
+        src.mkdir()
+        (src / "model.safetensors").write_bytes(b"\x00" * 1024)
+        (src / "config.json").write_bytes(b"{}")
+
+        r = client.post(
+            "/api/models/load-from-path",
+            json={"cp_id": IMG_GEN_MODEL_CP_ID, "sourcePath": str(src)},
+        )
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["cp_id"] == IMG_GEN_MODEL_CP_ID
+        assert body["method"] in ("linked", "copied")
+        # The checkpoint is now considered downloaded at the expected path.
+        dst = _cp_path(test_state, IMG_GEN_MODEL_CP_ID)
+        assert dst.exists()
+        assert (dst / "model.safetensors").exists()
+
+    def test_load_from_path_rejects_missing_source(self, client):
+        r = client.post(
+            "/api/models/load-from-path",
+            json={"cp_id": IMG_GEN_MODEL_CP_ID, "sourcePath": "C:/does/not/exist/Z-Image-Turbo"},
+        )
+        assert r.status_code == 400
+        assert r.json()["code"] == "LOAD_SOURCE_NOT_FOUND"
+
+    def test_load_from_path_rejects_already_present(self, client, test_state, tmp_path):
+        # Target already exists (non-empty folder) → 409.
+        dst = _cp_path(test_state, IMG_GEN_MODEL_CP_ID)
+        dst.mkdir(parents=True, exist_ok=True)
+        (dst / "model.safetensors").write_bytes(b"\x00")
+        src = tmp_path / "my-z-image"
+        src.mkdir()
+        (src / "model.safetensors").write_bytes(b"\x00")
+        r = client.post(
+            "/api/models/load-from-path",
+            json={"cp_id": IMG_GEN_MODEL_CP_ID, "sourcePath": str(src)},
+        )
+        assert r.status_code == 409
+        assert r.json()["code"] == "LOAD_TARGET_EXISTS"

@@ -2,12 +2,14 @@ import { ChildProcess, spawn } from 'child_process'
 import crypto from 'crypto'
 import fs from 'fs'
 import path from 'path'
+import { safeStorage } from 'electron'
 import { getAppDataDir } from './app-paths'
 import { getCurrentDir, isDev } from './config'
 import { HF_GATING_ENABLED } from '../shared/feature-flags'
 import { logger, writeLog } from './logger'
 import { getCurrentLogFilename } from './logging-management'
 import { getPythonDir } from './python-setup'
+import { redactSecrets } from './secret-redaction'
 import { getMainWindow } from './window'
 
 let pythonProcess: ChildProcess | null = null
@@ -62,6 +64,35 @@ function getBackendPath(): string {
   return path.join(process.resourcesPath, 'backend')
 }
 
+function getSettingsSecretKey(): string {
+  const developmentOverride = process.env.LTX_SETTINGS_SECRET_KEY
+  if (isDev && developmentOverride) return developmentOverride
+  if (!safeStorage.isEncryptionAvailable()) {
+    throw new Error('Secure OS credential storage is unavailable')
+  }
+  if (
+    !isDev &&
+    process.platform === 'linux' &&
+    safeStorage.getSelectedStorageBackend() === 'basic_text'
+  ) {
+    throw new Error('Linux secret service is unavailable; refusing insecure credential storage')
+  }
+
+  const keyPath = path.join(getAppDataDir(), 'settings-key.encrypted')
+  if (fs.existsSync(keyPath)) {
+    const encrypted = fs.readFileSync(keyPath)
+    return safeStorage.decryptString(encrypted)
+  }
+
+  const key = crypto.randomBytes(32).toString('base64url')
+  const encrypted = safeStorage.encryptString(key)
+  fs.mkdirSync(path.dirname(keyPath), { recursive: true })
+  const temporary = `${keyPath}.${process.pid}.tmp`
+  fs.writeFileSync(temporary, encrypted, { mode: 0o600 })
+  fs.renameSync(temporary, keyPath)
+  return key
+}
+
 function isPortConflictOutput(output: string): boolean {
   const normalizedOutput = output.toLowerCase()
   return (
@@ -98,6 +129,7 @@ async function requestAdoptedBackendShutdown(timeoutMs = 2000): Promise<boolean>
   try {
     const headers: Record<string, string> = {}
     if (authToken) headers['Authorization'] = `Bearer ${authToken}`
+    if (adminToken) headers['X-Admin-Token'] = adminToken
     const response = await fetch(`${backendUrl}/api/system/shutdown`, {
       method: 'POST',
       signal: controller.signal,
@@ -141,6 +173,10 @@ function startLivenessMonitor(): void {
       const healthy = await probeBackendHealth(2000)
       if (healthy) {
         livenessFailureCount = 0
+        // Idempotent heartbeat: re-publish 'alive' so a renderer that mounted
+        // before (or raced) the one-shot startup publish still converges to
+        // 'alive' within one poll interval instead of stalling forever.
+        publishBackendHealthStatus({ status: 'alive' })
         return
       }
       livenessFailureCount += 1
@@ -284,6 +320,7 @@ export async function startPythonBackend(): Promise<void> {
     // Generate auth token and admin token for this backend session
     authToken = crypto.randomBytes(32).toString('base64url')
     adminToken = crypto.randomBytes(32).toString('base64url')
+    const settingsSecretKey = getSettingsSecretKey()
 
     pythonProcess = spawn(pythonPath, pythonArgs, {
       cwd: backendPath,
@@ -295,6 +332,7 @@ export async function startPythonBackend(): Promise<void> {
         ...(process.env.LTX_PORT ? { LTX_PORT: process.env.LTX_PORT } : {}),
         LTX_AUTH_TOKEN: authToken,
         LTX_ADMIN_TOKEN: adminToken,
+        LTX_SETTINGS_SECRET_KEY: settingsSecretKey,
         LTX_LOG_FILE: getCurrentLogFilename(),
         LTX_APP_DATA_DIR: getAppDataDir(),
         LTX_DEV_MODE: isDev ? '1' : '0',
@@ -356,14 +394,23 @@ export async function startPythonBackend(): Promise<void> {
 
       if (started || probeGateStarted) return
 
-      const readyMatch = output.match(/Server running on (http:\/\/\S+)/)
+      // Capture the URL from either our own "Server running on <url>" line or
+      // uvicorn's own "Uvicorn running on <url>" line. Both carry the URL, and
+      // they can arrive in separate stdout chunks in any order. Parsing the URL
+      // from whichever arrives first guarantees `backendUrl` is set before we
+      // mark the backend alive — otherwise the URL-less fallback below would set
+      // `started`/publish alive, and the `started` guard above would then block
+      // the later URL-bearing line, leaving `backendUrl` null forever (every
+      // backendFetch then resolves relative to the renderer origin -> HTML).
+      const readyMatch = output.match(/(?:Server|Uvicorn) running on (http:\/\/\S+)/)
       if (readyMatch) {
         backendUrl = readyMatch[1]
         probeGateStarted = true
         void gateAliveOnProbe()
       } else if (output.includes('Uvicorn running')) {
-        // Fallback for legacy/dev uvicorn output — no parseable URL, so we
-        // can't HTTP-probe. Publish alive on the log signal alone.
+        // Last-resort fallback for output that signals readiness without any
+        // parseable URL. We can't HTTP-probe, so publish alive on the log
+        // signal alone.
         started = true
         backendOwnership = 'managed'
         publishBackendHealthStatus({ status: 'alive' })
@@ -373,8 +420,9 @@ export async function startPythonBackend(): Promise<void> {
 
     pythonProcess.stdout?.on('data', (data: Buffer) => {
       const output = data.toString()
-      console.log(`[Python] ${output}`)
-      for (const line of output.split('\n')) {
+      const redactedOutput = redactSecrets(output, [authToken, adminToken, settingsSecretKey])
+      console.log(`[Python] ${redactedOutput}`)
+      for (const line of redactedOutput.split('\n')) {
         const trimmed = line.trimEnd()
         if (trimmed) writeLog('INFO', 'Backend', trimmed)
       }
@@ -383,8 +431,9 @@ export async function startPythonBackend(): Promise<void> {
 
     pythonProcess.stderr?.on('data', (data: Buffer) => {
       const output = data.toString()
-      console.error(`[Python Error] ${output}`)
-      for (const line of output.split('\n')) {
+      const redactedOutput = redactSecrets(output, [authToken, adminToken, settingsSecretKey])
+      console.error(`[Python Error] ${redactedOutput}`)
+      for (const line of redactedOutput.split('\n')) {
         const trimmed = line.trimEnd()
         if (trimmed) writeLog('ERROR', 'Backend', trimmed)
       }

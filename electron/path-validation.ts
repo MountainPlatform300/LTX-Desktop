@@ -1,9 +1,26 @@
+import fs from 'fs'
 import path from 'path'
 
 const isWindows = process.platform === 'win32'
 
+function canonicalize(p: string): string {
+  let existing = path.resolve(p)
+  const missingParts: string[] = []
+  while (!fs.existsSync(existing)) {
+    const parent = path.dirname(existing)
+    if (parent === existing) break
+    missingParts.unshift(path.basename(existing))
+    existing = parent
+  }
+  const canonicalExisting = fs.existsSync(existing)
+    ? fs.realpathSync.native(existing)
+    : existing
+  return path.resolve(canonicalExisting, ...missingParts)
+}
+
 function normalize(p: string): string {
-  return isWindows ? path.resolve(p).toLowerCase() : path.resolve(p)
+  const canonical = canonicalize(p)
+  return isWindows ? canonical.toLowerCase() : canonical
 }
 
 function stripFileUrl(fileUrl: string): string {
@@ -13,15 +30,19 @@ function stripFileUrl(fileUrl: string): string {
   return decodeURIComponent(raw).replace(/\//g, path.sep)
 }
 
-const approvedPaths = new Set<string>()
+const approvedPaths = new Map<string, boolean>()
 
 export function approvePath(filePath: string): void {
-  approvedPaths.add(normalize(filePath))
+  const canonical = canonicalize(filePath)
+  approvedPaths.set(
+    normalize(canonical),
+    fs.existsSync(canonical) && fs.statSync(canonical).isDirectory(),
+  )
 }
 
 export function validatePath(inputPath: string, allowedRoots: string[]): string {
   const cleaned = inputPath.startsWith('file://') ? stripFileUrl(inputPath) : inputPath
-  const resolved = path.resolve(cleaned)
+  const resolved = canonicalize(cleaned)
   const norm = normalize(resolved)
 
   for (const root of allowedRoots.map(normalize)) {
@@ -29,8 +50,10 @@ export function validatePath(inputPath: string, allowedRoots: string[]): string 
   }
 
   let found = false
-  approvedPaths.forEach((approved) => {
-    if (norm === approved || norm.startsWith(approved + path.sep)) found = true
+  approvedPaths.forEach((isDirectory, approved) => {
+    if (norm === approved || (isDirectory && norm.startsWith(approved + path.sep))) {
+      found = true
+    }
   })
   if (found) return resolved
 

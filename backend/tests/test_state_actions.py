@@ -114,3 +114,51 @@ def test_ic_lora_unload_clears_preprocessing_resources(test_state, create_fake_m
     test_state.pipelines.unload_gpu_pipeline()
 
     assert test_state.state.gpu_slot is None
+
+
+def test_standard_lora_swap_rebuilds_gpu_slot(test_state, fake_services, create_fake_model_files):
+    """A standard LoRA is part of the fast-pipeline cache key: switching adapters
+    rebuilds the GpuSlot instead of silently reusing the base-model pipeline."""
+    create_fake_model_files()
+    fake = fake_services.fast_video_pipeline
+    create_calls_after = lambda: fake.create_calls  # noqa: E731
+
+    base = test_state.pipelines.load_gpu_pipeline("fast")
+    assert base.lora_path is None
+    assert fake.last_lora_path is None
+    creates_after_base = create_calls_after()
+
+    # Same lora_path (None) -> cache hit, no rebuild.
+    again = test_state.pipelines.load_gpu_pipeline("fast")
+    assert again is base  # same VideoPipelineState wrapper
+    assert create_calls_after() == creates_after_base
+
+    # Different adapter -> rebuild: new state wrapper, create() invoked, adapter recorded.
+    lora_a = test_state.pipelines.load_gpu_pipeline("fast", lora_path="/loras/a.safetensors", lora_scale=0.8)
+    assert lora_a.lora_path == "/loras/a.safetensors"
+    assert lora_a.lora_scale == 0.8
+    assert fake.last_lora_path == "/loras/a.safetensors"
+    assert fake.last_lora_scale == 0.8
+    assert lora_a is not base
+    creates_after_a = create_calls_after()
+    assert creates_after_a == creates_after_base + 1
+
+    # Same adapter again -> cache hit, no rebuild.
+    lora_a_again = test_state.pipelines.load_gpu_pipeline("fast", lora_path="/loras/a.safetensors", lora_scale=0.8)
+    assert lora_a_again is lora_a
+    assert create_calls_after() == creates_after_a
+
+    # Different adapter -> rebuild.
+    lora_b = test_state.pipelines.load_gpu_pipeline("fast", lora_path="/loras/b.safetensors")
+    assert lora_b.lora_path == "/loras/b.safetensors"
+    assert fake.last_lora_path == "/loras/b.safetensors"
+    assert lora_b is not lora_a
+    creates_after_b = create_calls_after()
+    assert creates_after_b == creates_after_a + 1
+
+    # Back to base model -> rebuild (different cache key from any LoRA).
+    base_again = test_state.pipelines.load_gpu_pipeline("fast")
+    assert base_again.lora_path is None
+    assert fake.last_lora_path is None
+    assert base_again is not lora_b
+    assert create_calls_after() == creates_after_b + 1

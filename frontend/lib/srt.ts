@@ -50,9 +50,10 @@ function stripTags(text: string): { clean: string; color?: string } {
     color = c
   }
 
-  // Strip all HTML tags
-  const clean = text
-    .replace(/<[^>]+>/g, '')   // remove tags
+  // Parse as an inert HTML document and keep text only. A regex-based tag
+  // remover can be bypassed with nested angle brackets.
+  const inertDocument = new DOMParser().parseFromString(text, 'text/html')
+  const clean = (inertDocument.body.textContent ?? '')
     .replace(/\n\s*\n/g, '\n') // collapse blank lines left by removed tags
     .trim()
 

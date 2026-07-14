@@ -4,7 +4,7 @@ import os from 'os'
 import { getAllowedRoots } from '../config'
 import { logger } from '../logger'
 import { validatePath } from '../path-validation'
-import { findFfmpegPath, runFfmpeg, stopExportProcess } from './ffmpeg-utils'
+import { findFfmpegPath, runFfmpeg, stopExportProcess, getVideoDimensions } from './ffmpeg-utils'
 import { flattenTimeline } from './timeline'
 import { buildVideoFilterGraph } from './video-filter'
 import { mixAudioToPcm } from './audio-mix'
@@ -117,6 +117,50 @@ export function registerExportHandlers(): void {
 
   handle('exportCancel', () => {
     stopExportProcess()
+    return { success: true }
+  })
+
+  // Compose two videos (reference | output) into a single side-by-side MP4.
+  // Used by the IC-LoRA result viewer's "Export side-by-side" action. Both
+  // inputs are scaled to the output video's height (preserving aspect ratio)
+  // so hstack lines up cleanly; `-shortest` handles a duration mismatch.
+  handle('exportSideBySide', async ({ leftPath, rightPath, outputPath }) => {
+    const ffmpegPath = findFfmpegPath()
+    if (!ffmpegPath) return { success: false, error: 'FFmpeg not found' }
+
+    try {
+      validatePath(outputPath, getAllowedRoots())
+      validatePath(leftPath, getAllowedRoots())
+      validatePath(rightPath, getAllowedRoots())
+    } catch (err) {
+      return { success: false, error: String(err) }
+    }
+
+    if (!fs.existsSync(leftPath)) return { success: false, error: `Reference file not found: ${path.basename(leftPath)}` }
+    if (!fs.existsSync(rightPath)) return { success: false, error: `Output file not found: ${path.basename(rightPath)}` }
+
+    let targetHeight = 480
+    try {
+      targetHeight = getVideoDimensions(rightPath).height || targetHeight
+    } catch (err) {
+      logger.warn(`[Export] Could not probe output dimensions, defaulting to ${targetHeight}p: ${err}`)
+    }
+
+    const filter = [
+      `[0:v]scale=-2:${targetHeight},setsar=1[vl]`,
+      `[1:v]scale=-2:${targetHeight},setsar=1[vr]`,
+      `[vl][vr]hstack=inputs=2[v]`,
+    ].join(';')
+
+    const r = await runFfmpeg(ffmpegPath, [
+      '-y', '-i', leftPath, '-i', rightPath,
+      '-filter_complex', filter,
+      '-map', '[v]', '-an',
+      '-c:v', 'libx264', '-preset', 'fast', '-crf', '18', '-pix_fmt', 'yuv420p',
+      '-movflags', '+faststart', '-shortest', outputPath,
+    ])
+    if (!r.success) return { success: false, error: r.error }
+    logger.info(`[Export] Side-by-side done: ${outputPath}`)
     return { success: true }
   })
 }

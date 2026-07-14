@@ -7,6 +7,7 @@ const ANALYTICS_ENDPOINT = 'https://ltx-desktop.lightricks.com/v2/ingest';
 const REQUEST_TIMEOUT_MS = 5000;
 const MAX_RETRIES = 3;
 const RETRY_DELAYS_MS = [1000, 3000, 10000]
+const ALLOWED_ANALYTICS_EVENTS = new Set(['ltxdesktop_app_launched'])
 
 export function getAnalyticsState(): { analyticsEnabled: boolean; installationId: string } {
   const state = readAppState()
@@ -45,7 +46,14 @@ async function sendWithRetry(
       const response = await fetch(url, { ...options, signal: controller.signal })
       clearTimeout(timeout)
 
-      if (response.ok || !isRetryable(response.status)) return
+      if (response.ok) return
+      if (!isRetryable(response.status)) {
+        console.warn(`[analytics] request rejected with HTTP ${response.status}`)
+        return
+      }
+      if (attempt === MAX_RETRIES) {
+        console.warn(`[analytics] request failed after retries with HTTP ${response.status}`)
+      }
     } catch (err) {
       console.warn('[analytics] request attempt failed:', err)
     }
@@ -63,6 +71,11 @@ export async function sendAnalyticsEvent(
   try {
     // Skip analytics in dev builds
     if (isDev) return;
+    if (!ALLOWED_ANALYTICS_EVENTS.has(eventName)) {
+      console.warn(`[analytics] ignored unrecognized event: ${eventName}`)
+      return
+    }
+    void extraDetails
 
     const state = readAppState()
     if (state.analyticsEnabled === false) return
@@ -88,7 +101,12 @@ export async function sendAnalyticsEvent(
             device_timestamp: now,
             installation_id: state.installationId,
             platform,
-            extra_details: extraDetails ? JSON.stringify(extraDetails) : null,
+            // Preserve the upstream schema: extra_details is a JSON string.
+            // Only static fork identity is included; renderer values stay out.
+            extra_details: JSON.stringify({
+              distribution: 'unofficial-fork',
+              repository: 'MountainPlatform300/LTX-Desktop',
+            }),
           },
         },
       ],

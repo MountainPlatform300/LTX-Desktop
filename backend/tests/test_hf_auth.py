@@ -9,10 +9,20 @@ from pathlib import Path
 
 import pytest
 
+from _routes._errors import HTTPError
 from state.app_state_types import HfAuthenticated, HfNotAuthenticated, HfOAuthPending
 
 
 class TestStartLogin:
+    def test_rejects_when_oauth_client_is_not_configured(self, test_state) -> None:
+        test_state.config.hf_oauth_client_id = ""
+
+        with pytest.raises(HTTPError) as exc_info:
+            test_state.hf_auth.start_login()
+
+        assert exc_info.value.status_code == 503
+        assert exc_info.value.code == "HF_OAUTH_NOT_CONFIGURED"
+
     def test_returns_correct_fields(self, test_state) -> None:
         resp = test_state.hf_auth.start_login()
         assert resp.client_id == "test-client-id"
@@ -90,13 +100,15 @@ class TestHandleCallback:
         assert isinstance(test_state.state.hf_auth_state, HfAuthenticated)
         assert test_state.state.hf_auth_state.access_token == "hf_test_token_123"
 
-    def test_exchange_failure_sets_not_authenticated(self, test_state, monkeypatch) -> None:
+    def test_exchange_failure_sets_not_authenticated(
+        self, test_state, monkeypatch, caplog
+    ) -> None:
         resp = test_state.hf_auth.start_login()
 
         @dataclass
         class FakeErrorResponse:
             status_code: int = 401
-            text: str = "unauthorized"
+            text: str = '{"access_token":"hf_must_not_be_logged"}'
 
         import handlers.hf_auth_handler as handler_module
         monkeypatch.setattr(handler_module.requests, "post", lambda *_args, **_kwargs: FakeErrorResponse())
@@ -104,6 +116,8 @@ class TestHandleCallback:
         html = test_state.hf_auth.handle_callback(code="bad-code", state_param=resp.state, error="")
         assert "Token exchange failed" in html
         assert isinstance(test_state.state.hf_auth_state, HfNotAuthenticated)
+        assert "hf_must_not_be_logged" not in caplog.text
+        assert "status 401" in caplog.text
 
 
 class TestAuthStatus:

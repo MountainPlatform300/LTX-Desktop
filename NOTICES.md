@@ -43,6 +43,7 @@ used by LTX Desktop.
 
 - **pillow** — Copyright (c) Jeffrey A. Clark and Pillow contributors — HPND License
 - **torch** — Copyright (c) Meta Platforms, Inc. — BSD 3-Clause License
+- **torchaudio** — Copyright (c) Meta Platforms, Inc. — BSD 2-Clause License
 - **huggingface-hub** — Copyright (c) Hugging Face — Apache License 2.0
 - **tqdm** — Copyright (c) Casper da Costa-Luis — Mozilla Public License 2.0
 - **pynvml** — Copyright (c) NVIDIA Corporation — BSD 3-Clause License
@@ -63,6 +64,10 @@ used by LTX Desktop.
 - **uvicorn** — Copyright (c) Encode OSS Ltd. — BSD 3-Clause License
 - **python-multipart** — Copyright (c) Andrew Dunham — Apache License 2.0
 - **triton-windows** — Copyright (c) OpenAI — MIT License (Windows only)
+- **triton** — Copyright (c) OpenAI and contributors — MIT License (Linux only)
+- **runpod** — Copyright (c) RunPod Inc. — MIT License
+- **paramiko** — Copyright (c) Jeff Forcier and contributors — LGPL 2.1
+- **cryptography** — Copyright (c) The Python Cryptographic Authority and contributors — Apache License 2.0 or BSD 3-Clause License
 
 ---
 
@@ -76,8 +81,23 @@ used by LTX Desktop.
 - **electron-updater** — Copyright (c) electron-userland — MIT License
 - **js-yaml** — Copyright (c) Vitaly Puzrin — MIT License
 - **lucide-react** — Copyright (c) Lucide contributors — ISC License
-- **react-dropzone** — Copyright (c) Param Aggarwal — MIT License
+- **react-resizable-panels** — Copyright (c) Brian Vaughn — MIT License
 - **tailwind-merge** — Copyright (c) dcastil — MIT License
+- **zod** — Copyright (c) Colin McDonnell — MIT License
+- **zustand** — Copyright (c) Paul Henschel and contributors — MIT License
+
+---
+
+## Bundled and runtime tools
+
+- **FFmpeg / ffprobe** — FFmpeg contributors — LGPL 2.1+ or GPL, depending on
+  the exact distributed build. Release evidence must identify the build and its
+  enabled license configuration.
+
+Each release includes machine-generated Node/Python license evidence and an
+SPDX SBOM from the exact lockfiles and source tag. Those artifacts are the
+complete dependency inventory; this file preserves the principal attribution
+and special-license notices required in the application bundle.
 
 ---
 

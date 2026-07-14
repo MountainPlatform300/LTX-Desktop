@@ -31,7 +31,7 @@ interface ICLoraPanelProps {
 }
 
 export const CONDITIONING_TYPES: { value: ICLoraConditioningType; label: string; desc: string }[] = [
-  { value: 'canny', label: 'Canny Edges', desc: 'Edge detection' },
+  { value: 'canny', label: 'Canny', desc: 'Edge detection' },
   { value: 'depth', label: 'Depth Map', desc: 'Estimated depth' },
 ]
 

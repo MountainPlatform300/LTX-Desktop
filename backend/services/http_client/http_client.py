@@ -49,6 +49,7 @@ class HTTPClient(Protocol):
         url: str,
         headers: dict[str, str] | None = None,
         timeout: int = 30,
+        allow_redirects: bool = True,
     ) -> HttpResponseLike:
         ...
 

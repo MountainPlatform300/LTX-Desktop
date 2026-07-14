@@ -7,6 +7,7 @@ import type { Asset } from '../../types/project-model'
 import { COLOR_LABELS } from './video-editor-utils'
 import { equalAssetBins, selectAssetBins, selectAssets, selectRegenerationState } from './editor-selectors'
 import { useEditorActions, useEditorStore } from './editor-store'
+import { confirmAction } from '../../components/ui/confirm-dialog'
 
 export interface AssetContextMenuProps {
   asset: Asset
@@ -203,9 +204,14 @@ export function AssetContextMenu({
             <span>Ungroup Takes</span>
           </button>
           <button
-            onClick={() => {
+            onClick={async () => {
               const activeIdx = asset.activeTakeIndex ?? 0
-              if (confirm(`Delete take ${activeIdx + 1}?`)) {
+              if (await confirmAction({
+                title: `Delete take ${activeIdx + 1}?`,
+                message: 'This take will be removed from the asset.',
+                confirmLabel: 'Delete take',
+                variant: 'destructive',
+              })) {
                 actions.deleteAssetTake(asset.id, activeIdx)
               }
               closeMenu()

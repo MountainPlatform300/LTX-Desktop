@@ -11,6 +11,7 @@ import { createAssetBinId, type Asset } from '../../types/project-model'
 import { VideoThumbnailCard } from './VideoThumbnailCard'
 import { getColorLabel } from './video-editor-utils'
 import { Tooltip } from '../../components/ui/tooltip'
+import { confirmAction } from '../../components/ui/confirm-dialog'
 import { AssetContextMenu } from './AssetContextMenu'
 import { TakeContextMenu } from './TakeContextMenu'
 import { pathToFileUrl } from '../../lib/file-url'
@@ -678,9 +679,14 @@ export const VideoEditorAssetsPanel = forwardRef<VideoEditorAssetsPanelHandle, V
                       <Tooltip content="Delete take" side="right">
                         <button
                           className="absolute top-1.5 right-1.5 p-1 rounded-md bg-black/70 text-zinc-400 hover:text-red-400 hover:bg-red-900/60 opacity-0 group-hover:opacity-100 transition-all z-10"
-                          onClick={(e) => {
+                          onClick={async (e) => {
                             e.stopPropagation()
-                            if (confirm(`Delete take ${idx + 1}?`)) {
+                            if (await confirmAction({
+                              title: `Delete take ${idx + 1}?`,
+                              message: 'This take will be removed from the asset.',
+                              confirmLabel: 'Delete take',
+                              variant: 'destructive',
+                            })) {
                               actions.deleteAssetTake(takesAsset.id, idx)
                             }
                           }}

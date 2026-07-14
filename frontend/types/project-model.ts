@@ -7,6 +7,7 @@ export const generationModeValues = [
   'text-to-image',
   'retake',
   'ic-lora',
+  'lora',
 ] as const
 
 export const assetTypeValues = ['image', 'video', 'audio', 'adjustment'] as const
@@ -43,8 +44,8 @@ export const effectTypeValues = [
 ] as const
 export const effectMaskShapeValues = ['rectangle', 'ellipse'] as const
 export const letterboxAspectRatioValues = ['2.35:1', '2.39:1', '2.76:1', '1.85:1', '4:3', 'custom'] as const
-export const viewTypeValues = ['home', 'project'] as const
-export const projectTabValues = ['gen-space', 'video-editor'] as const
+export const viewTypeValues = ['home', 'project', 'lora-trainer'] as const
+export const projectTabValues = ['gen-space', 'video-editor', 'lora-trainer'] as const
 
 export const transitionTypeSchema = z.enum(transitionTypeValues)
 export const viewTypeSchema = z.enum(viewTypeValues)
@@ -70,6 +71,13 @@ export const generationParamsSchema = z.object({
   icLoraVideoPath: z.string().optional(),
   icLoraConditioningType: z.string().optional(),
   icLoraConditioningStrength: z.number().optional(),
+  loraId: z.string().optional(),
+  loraVariant: z.string().optional(),
+  // IC-LoRA result extras: the reference video (before) and the union control
+  // video (canny/depth/pose) so the result viewer can show a before/after
+  // side-by-side and a control-signal view. Populated by the queue asset router.
+  referenceVideoPath: z.string().optional(),
+  controlVideoPath: z.string().optional(),
 })
 
 export const assetTakeSchema = z.object({

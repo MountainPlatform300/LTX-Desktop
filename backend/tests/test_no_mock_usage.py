@@ -13,7 +13,12 @@ def test_backend_tests_do_not_use_mocking_libraries() -> None:
         r"\bunittest\.mock\b",
         r"\bfrom\s+unittest\.mock\s+import\b",
         r"\bimport\s+unittest\.mock\b",
-        r"(?<!\w)patch\(",
+        # `patch(` as a top-level call (catches `from unittest.mock
+        # import patch; patch(...)`) but NOT `client.patch(...)` /
+        # `httpx_client.patch(...)` style HTTP method calls — `.` is
+        # not a word character, so the original `(?<!\w)` lookbehind
+        # let those slip through. `(?<![\w.])` rejects both cases.
+        r"(?<![\w.])patch\(",
     )
 
     for path in tests_dir.rglob("*.py"):

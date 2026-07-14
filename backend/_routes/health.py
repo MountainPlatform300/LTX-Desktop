@@ -10,6 +10,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from api_types import GpuInfoResponse, HealthResponse
 from state import get_state_service
 from app_handler import AppHandler
+from _routes._admin_guard import guard_admin_permission
 
 router = APIRouter(tags=["health"])
 
@@ -33,6 +34,13 @@ def route_shutdown(background_tasks: BackgroundTasks, request: Request) -> dict[
     client_host = request.client.host if request.client else None
     if client_host not in {"127.0.0.1", "::1", "localhost"}:
         raise HTTPException(status_code=403, detail="Forbidden")
+
+    # Electron-managed backends always configure a main-process-only admin
+    # token. Keep explicit insecure standalone/dev servers compatible until
+    # auth-by-default is rolled out behind its dedicated compatibility flag.
+    admin_token: str = getattr(request.app.state, "admin_token", "")
+    if admin_token:
+        guard_admin_permission(request)
 
     background_tasks.add_task(_shutdown_process)
     return {"status": "shutting_down"}

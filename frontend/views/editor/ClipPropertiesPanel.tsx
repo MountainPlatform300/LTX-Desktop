@@ -12,6 +12,7 @@ import { DEFAULT_COLOR_CORRECTION, DEFAULT_LETTERBOX } from '../../types/project
 import { TEXT_PRESETS } from '../../types/project'
 import { formatTime } from './video-editor-utils'
 import { Tooltip } from '../../components/ui/tooltip'
+import { confirmAction } from '../../components/ui/confirm-dialog'
 import {
   selectAssets,
   selectSelectedClipAudioControls,
@@ -154,8 +155,13 @@ export function ClipPropertiesPanel(props: ClipPropertiesPanelProps) {
                     {totalTakes > 1 && (
                       <Tooltip content="Delete this take" side="left">
                         <button
-                          onClick={() => {
-                            if (confirm(`Delete take ${displayTakeNum}?`)) {
+                          onClick={async () => {
+                            if (await confirmAction({
+                              title: `Delete take ${displayTakeNum}?`,
+                              message: 'This take will be removed from the asset.',
+                              confirmLabel: 'Delete take',
+                              variant: 'destructive',
+                            })) {
                               handleDeleteDisplayedTake()
                             }
                           }}

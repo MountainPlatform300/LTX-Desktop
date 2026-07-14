@@ -35,9 +35,15 @@ class HTTPClientImpl:
         url: str,
         headers: dict[str, str] | None = None,
         timeout: int = 30,
+        allow_redirects: bool = True,
     ) -> requests.Response:
         try:
-            return requests.get(url, headers=headers, timeout=timeout)
+            return requests.get(
+                url,
+                headers=headers,
+                timeout=timeout,
+                allow_redirects=allow_redirects,
+            )
         except requests.exceptions.Timeout as exc:
             logger.error("HTTP GET timed out: %s", url, exc_info=True)
             raise HttpTimeoutError(str(exc)) from exc
