@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 import requests
 from pydantic import BaseModel
 
+from _routes._errors import HTTPError
 from api_types import HuggingFaceAuthStatusResponse, HuggingFaceLoginResponse, HuggingFaceLogoutResponse
 from handlers.base import StateHandlerBase, with_state_lock
 from state.app_state_types import (
@@ -124,6 +125,13 @@ class HuggingFaceAuthHandler(StateHandlerBase):
     @with_state_lock
     def start_login(self) -> HuggingFaceLoginResponse:
         """Generate PKCE + state, store pending, return OAuth parameters."""
+        if not self.config.hf_oauth_client_id:
+            raise HTTPError(
+                503,
+                "Hugging Face OAuth is not configured in this build. "
+                "Add a Hugging Face token in Settings instead.",
+                code="HF_OAUTH_NOT_CONFIGURED",
+            )
         state_token = secrets.token_hex(32)
         code_verifier = secrets.token_urlsafe(64)
         code_challenge = (
@@ -196,7 +204,9 @@ class HuggingFaceAuthHandler(StateHandlerBase):
             return False
 
         if resp.status_code != 200:
-            logger.error("HuggingFace token exchange returned %s: %s", resp.status_code, resp.text)
+            # OAuth error bodies are controlled by the upstream provider and
+            # may contain token-shaped diagnostics. Never persist them.
+            logger.error("HuggingFace token exchange returned status %s", resp.status_code)
             with self._lock:
                 self._set_hf_auth_state(HfNotAuthenticated())
             return False

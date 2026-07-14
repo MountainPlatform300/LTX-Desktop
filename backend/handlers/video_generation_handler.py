@@ -80,7 +80,13 @@ class VideoGenerationHandler(StateHandlerBase):
     def get_model_specs(self) -> GenerateVideoModelsSpecsResponse:
         return build_generate_video_model_specs_response()
 
-    def generate(self, req: GenerateVideoRequest) -> GenerateVideoResponse:
+    def generate(
+        self, req: GenerateVideoRequest, *, lora_path: str | None = None, lora_scale: float = 1.0
+    ) -> GenerateVideoResponse:
+        # Clear any stale pre-load cancel token from a prior run before this
+        # generate attempt begins (including the API/A2V branches below). See
+        # GenerationHandler.clear_cancel_token for why the token exists.
+        self._generation.clear_cancel_token()
         use_api_specs = should_video_generate_with_ltx_api(
             force_api_generations=self.config.force_api_generations,
             settings=self.state.app_settings,
@@ -88,6 +94,13 @@ class VideoGenerationHandler(StateHandlerBase):
         validation_error = validate_generate_video_request(req, use_api_specs=use_api_specs)
         if validation_error is not None:
             raise HTTPError(422, validation_error, code="INVALID_VIDEO_GENERATION_SPEC")
+
+        # A standard LoRA is a local-pipeline modifier (the adapter is built into
+        # the DistilledPipeline at load time); it can't be applied to API generations.
+        if lora_path and use_api_specs:
+            raise HTTPError(
+                400, "LoRA inference is not available for API generations", code="LORA_API_UNSUPPORTED"
+            )
 
         if use_api_specs:
             return self._generate_forced_api(req)
@@ -106,7 +119,12 @@ class VideoGenerationHandler(StateHandlerBase):
         logger.info("Resolution %s - using fast pipeline", resolution)
 
         RESOLUTION_MAP_16_9: dict[str, tuple[int, int]] = {
-            "540p": (960, 544),
+            # 540p uses 960x576 (not 960x544): the two-stage pipeline patchifies
+            # the latent with p=2, so each spatial latent dim must be even.
+            # 544/32 = 17 (odd) crashes rearrange ("can't divide axis of length
+            # 17 in chunks of 2"); 576/32 = 18 (even) is safe. Matches the A2V
+            # and IC-LoRA 540p buckets.
+            "540p": (960, 576),
             "720p": (1280, 704),
             "1080p": (1920, 1088),
         }
@@ -139,7 +157,7 @@ class VideoGenerationHandler(StateHandlerBase):
         seed = self._resolve_seed()
 
         try:
-            self._pipelines.load_gpu_pipeline("fast")
+            self._pipelines.load_gpu_pipeline("fast", lora_path=lora_path, lora_scale=lora_scale)
             self._generation.start_generation(generation_id)
 
             output_path = self.generate_video(
@@ -152,6 +170,8 @@ class VideoGenerationHandler(StateHandlerBase):
                 seed=seed,
                 camera_motion=req.cameraMotion,
                 negative_prompt=req.negativePrompt,
+                lora_path=lora_path,
+                lora_scale=lora_scale,
             )
 
             self._generation.complete_generation(output_path)
@@ -179,10 +199,17 @@ class VideoGenerationHandler(StateHandlerBase):
         seed: int,
         camera_motion: VideoCameraMotion,
         negative_prompt: str,
+        *,
+        lora_path: str | None = None,
+        lora_scale: float = 1.0,
     ) -> str:
         t_total_start = time.perf_counter()
         gen_mode = "i2v" if image is not None else "t2v"
-        logger.info("[%s] Generation started (model=fast, %dx%d, %d frames, %d fps)", gen_mode, width, height, num_frames, int(fps))
+        lora_tag = f" lora={Path(lora_path).name}" if lora_path else ""
+        logger.info(
+            "[%s] Generation started (model=fast, %dx%d, %d frames, %d fps%s)",
+            gen_mode, width, height, num_frames, int(fps), lora_tag,
+        )
 
         if self._generation.is_generation_cancelled():
             raise RuntimeError("Generation was cancelled")
@@ -191,7 +218,9 @@ class VideoGenerationHandler(StateHandlerBase):
 
         self._generation.update_progress("loading_model", 5, 0, total_steps)
         t_load_start = time.perf_counter()
-        pipeline_state = self._pipelines.load_gpu_pipeline("fast")
+        pipeline_state = self._pipelines.load_gpu_pipeline(
+            "fast", lora_path=lora_path, lora_scale=lora_scale
+        )
         t_load_end = time.perf_counter()
         logger.info("[%s] Pipeline load: %.2fs", gen_mode, t_load_end - t_load_start)
 
@@ -316,6 +345,14 @@ class VideoGenerationHandler(StateHandlerBase):
             self._generation.update_progress("encoding_text", 10, 0, total_steps)
             self._text.prepare_text_encoding(enhanced_prompt, enhance_prompt=a2v_enhance)
             self._generation.update_progress("inference", 15, 0, total_steps)
+
+            # Honor a cancel that landed during the pre-load window (the A2V
+            # pipeline load runs before start_generation, so a Stop during the
+            # load is recorded as a cancel token — see GenerationHandler). Without
+            # this check the run would proceed through the full inference and only
+            # unwind at the post-inference check below.
+            if self._generation.is_generation_cancelled():
+                raise RuntimeError("Generation was cancelled")
 
             a2v_state.pipeline.generate(
                 prompt=enhanced_prompt,

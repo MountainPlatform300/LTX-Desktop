@@ -45,6 +45,31 @@ esac
 
 PBS_URL="https://github.com/astral-sh/python-build-standalone/releases/download/${PBS_TAG}/cpython-${PYTHON_VERSION}+${PBS_TAG}-${PBS_ARCH}-${PBS_OS}-install_only_stripped.tar.gz"
 
+if [ "$PYTHON_VERSION" != "3.13.12" ] || [ "$PBS_TAG" != "20260211" ]; then
+  echo "ERROR: Python ${PYTHON_VERSION}+${PBS_TAG} is not pinned for release packaging."
+  exit 1
+fi
+
+# Digests reported by the GitHub release asset API for PBS_TAG 20260211.
+case "${PBS_ARCH}-${PBS_OS}" in
+  aarch64-apple-darwin)
+    PBS_SHA256="fdf98aad59d6fb99a0fc42a0392956bd7f246793003c1789b798f20e38b8ae75"
+    ;;
+  x86_64-apple-darwin)
+    PBS_SHA256="a43f811568fba89d788fa822d85b7f18822f695d76f96709dca017dc9b86b263"
+    ;;
+  aarch64-unknown-linux-gnu)
+    PBS_SHA256="180918f7fe5384bc09cf836103a5318a94a15725fa64df2005caedd56c36d64c"
+    ;;
+  x86_64-unknown-linux-gnu)
+    PBS_SHA256="bab0e2aeec8a32a7f5cb62240d088d50ea468ef6d7522681bc171d527a5ba6f8"
+    ;;
+  *)
+    echo "ERROR: No reviewed Python archive digest for ${PBS_ARCH}-${PBS_OS}."
+    exit 1
+    ;;
+esac
+
 PLATFORM_LABEL="$(uname -s) ($ARCH)"
 
 echo "========================================"
@@ -63,7 +88,12 @@ if ! command -v uv &>/dev/null; then
     echo "ERROR: uv not found. Install it: https://docs.astral.sh/uv/"
     exit 1
 fi
-echo "  uv: $(command -v uv)"
+UV_VERSION="$(uv --version)"
+if [[ ! "$UV_VERSION" =~ ^uv\ 0\.11\.25([[:space:]]|$) ]]; then
+    echo "ERROR: uv 0.11.25 is required; found '$UV_VERSION'."
+    exit 1
+fi
+echo "  uv: $(command -v uv) ($UV_VERSION)"
 
 if ! command -v curl &>/dev/null; then
     echo "ERROR: curl not found."
@@ -78,23 +108,20 @@ fi
 echo "  git: $(command -v git)"
 
 # ============================================================
-# Step 2: Generate requirements.txt from uv.lock
+# Step 2: Export a direct-source pylock from uv.lock
 # ============================================================
 echo ""
-echo "Step 2: Generating requirements.txt from uv.lock..."
+echo "Step 2: Exporting direct-source pylock from uv.lock..."
 
-REQUIREMENTS_FILE="$BACKEND_DIR/requirements-dist.txt"
+PYLOCK_FILE="$BACKEND_DIR/pylock.runtime.toml"
 
-# Export pinned deps, excluding the project itself.
-# Platform markers in pyproject.toml auto-exclude irrelevant deps
-# (e.g. triton-windows on Linux/macOS, triton on macOS/Windows).
-uv export --frozen --no-hashes --no-editable --no-emit-project \
-    --no-header --no-annotate \
+# Preserve each artifact's locked source URL and digest so PyPI and CUDA
+# packages cannot be confused across indexes.
+uv export --frozen --format pylock.toml --no-editable --no-emit-project \
     --project "$BACKEND_DIR" \
-    > "$REQUIREMENTS_FILE"
+    --output-file "$PYLOCK_FILE" >/dev/null
 
-DEP_COUNT=$(grep -c '^\S' "$REQUIREMENTS_FILE" || true)
-echo "  Exported $DEP_COUNT dependencies from uv.lock"
+echo "  Exported direct-source runtime lock from uv.lock"
 
 # ============================================================
 # Step 3: Prepare directories
@@ -118,6 +145,11 @@ echo "  URL: $PBS_URL"
 
 PYTHON_TAR="$TEMP_DIR/python-standalone.tar.gz"
 curl -L --fail --progress-bar -o "$PYTHON_TAR" "$PBS_URL"
+ACTUAL_PBS_SHA256="$(shasum -a 256 "$PYTHON_TAR" | awk '{print $1}')"
+if [ "$ACTUAL_PBS_SHA256" != "$PBS_SHA256" ]; then
+    echo "ERROR: Standalone Python archive digest mismatch: $ACTUAL_PBS_SHA256"
+    exit 1
+fi
 echo "  Downloaded Python standalone package"
 
 # python-build-standalone extracts to a `python/` directory
@@ -139,34 +171,23 @@ echo "  Python binary: $PYTHON_EXE"
 "$PYTHON_EXE" --version
 
 # ============================================================
-# Step 5: Ensure pip is available
+# Step 5: Verify the embedded interpreter
 # ============================================================
 echo ""
-echo "Step 5: Setting up pip..."
-
-# python-build-standalone install_only usually includes pip, but verify
-if ! "$PYTHON_EXE" -m pip --version &>/dev/null; then
-    echo "  Installing pip..."
-    curl -sL https://bootstrap.pypa.io/get-pip.py -o "$TEMP_DIR/get-pip.py"
-    "$PYTHON_EXE" "$TEMP_DIR/get-pip.py" --no-warn-script-location
-fi
-echo "  pip: $("$PYTHON_EXE" -m pip --version)"
+echo "Step 5: Embedded interpreter verified."
 
 # ============================================================
-# Step 6: Install all dependencies from requirements.txt
+# Step 6: Install all dependencies from the direct-source lock
 # ============================================================
 echo ""
-echo "Step 6: Installing dependencies from requirements.txt..."
+echo "Step 6: Installing dependencies from direct-source lock..."
 echo "  (This may take a while — PyTorch + ML libraries are large)"
 
-PIP_EXTRA_ARGS=()
-if [ "$PBS_OS" = "unknown-linux-gnu" ]; then
-  # Linux needs CUDA PyTorch wheels from the PyTorch index
-  PIP_EXTRA_ARGS+=(--extra-index-url "https://download.pytorch.org/whl/cu128")
-fi
-# On macOS, no --extra-index-url needed: standard PyPI torch includes MPS support
-"$PYTHON_EXE" -m pip install -r "$REQUIREMENTS_FILE" \
-    --no-warn-script-location --quiet "${PIP_EXTRA_ARGS[@]+"${PIP_EXTRA_ARGS[@]}"}"
+# Registry artifacts use their exact locked URLs and hashes. Commit-pinned VCS
+# requirements remain bound to their reviewed revisions.
+uv pip install -r "$PYLOCK_FILE" \
+    --build-constraint "$SCRIPT_DIR/python-build-constraints.txt" \
+    --python "$PYTHON_EXE"
 
 echo "  All dependencies installed"
 
@@ -210,9 +231,9 @@ find "$OUTPUT_PATH" -name "*.hpp" -delete 2>/dev/null || true
 find "$OUTPUT_PATH" -name "*.cpp" -delete 2>/dev/null || true
 find "$OUTPUT_PATH" -name "*.cmake" -delete 2>/dev/null || true
 
-# Remove temp directory and generated requirements file
+# Remove temp directory and generated lock file
 rm -rf "$TEMP_DIR"
-rm -f "$REQUIREMENTS_FILE"
+rm -f "$PYLOCK_FILE"
 
 echo "  Cleanup complete"
 
@@ -258,7 +279,17 @@ try:
 except ImportError as e:
     print(f'  ltx-pipelines: FAILED - {e}')
     sys.exit(1)
+try:
+    import runpod
+    import paramiko
+    print(f'  RunPod control dependencies: OK')
+except ImportError as e:
+    print(f'  RunPod control dependencies: FAILED - {e}')
+    sys.exit(1)
 "
+
+node "$SCRIPT_DIR/generate-python-deps-hash.mjs"
+cp "$PROJECT_DIR/python-deps-hash.txt" "$OUTPUT_PATH/deps-hash.txt"
 
 # Calculate size
 SIZE_BYTES=$(du -sb "$OUTPUT_PATH" 2>/dev/null | cut -f1 || du -sk "$OUTPUT_PATH" | awk '{print $1 * 1024}')

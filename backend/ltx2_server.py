@@ -44,6 +44,18 @@ from state.app_settings import AppSettings
 
 import platform
 
+# Force UTF-8 on the console streams. We relay trainer/remote log lines that
+# contain non-ASCII (e.g. tqdm progress bars: ▌ █), which crash the default
+# cp1252 stdout on Windows with a UnicodeEncodeError mid-log. `errors="replace"`
+# is a final safety net so logging can never raise on an un-encodable char.
+for _console_stream in (sys.stdout, sys.stderr):
+    _reconfigure = getattr(_console_stream, "reconfigure", None)
+    if _reconfigure is not None:
+        try:
+            _reconfigure(encoding="utf-8", errors="replace")
+        except (ValueError, OSError):
+            pass
+
 # Backend logs to console only — Electron captures stdout/stderr and writes
 # them to the session log file. This ensures *all* output (including early
 # import errors and unhandled tracebacks) reaches the log, not just messages
@@ -207,7 +219,7 @@ CAMERA_MOTION_PROMPTS = {
 
 DEFAULT_NEGATIVE_PROMPT = """blurry, out of focus, overexposed, underexposed, low contrast, washed out colors, excessive noise, grainy texture, poor lighting, flickering, motion blur, distorted proportions, unnatural skin tones, deformed facial features, asymmetrical face, missing facial features, extra limbs, disfigured hands, wrong hand count, artifacts around text, inconsistent perspective, camera shake, incorrect depth of field"""
 
-HF_OAUTH_CLIENT_ID = "a8189e14-9246-4f19-bd6a-a307bdcb9276"
+HF_OAUTH_CLIENT_ID = os.environ.get("LTX_HF_OAUTH_CLIENT_ID", "").strip()
 
 runtime_config = RuntimeConfig(
     device=DEVICE,
@@ -223,7 +235,10 @@ runtime_config = RuntimeConfig(
     dev_mode=os.environ.get("LTX_DEV_MODE") == "1",
     hf_oauth_client_id=HF_OAUTH_CLIENT_ID,
     backend_port=int(os.environ.get("LTX_PORT", "") or PORT),
-    hf_gating_enabled=os.environ.get("LTX_HF_GATING_ENABLED") == "1",
+    hf_gating_enabled=(
+        os.environ.get("LTX_HF_GATING_ENABLED") == "1"
+        and bool(HF_OAUTH_CLIENT_ID)
+    ),
 )
 
 handler = build_initial_state(runtime_config, DEFAULT_APP_SETTINGS)

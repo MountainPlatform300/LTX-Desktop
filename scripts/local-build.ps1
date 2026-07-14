@@ -93,6 +93,12 @@ if ($LASTEXITCODE -ne 0) {
 # ============================================================
 Write-Host "`n[3/3] Building frontend and Electron app..." -ForegroundColor Yellow
 
+& node "$ScriptDir\generate-python-deps-hash.mjs" --platform=win32 --arch=x64
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Failed to generate Python dependency hash!" -ForegroundColor Red
+    exit 1
+}
+
 pnpm run build:frontend
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Failed to build frontend!" -ForegroundColor Red

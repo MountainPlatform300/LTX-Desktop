@@ -3,17 +3,25 @@ import {
   Trash2, Download, Image, Video, X,
   Heart, Film, Volume2, VolumeX, Sparkles,
   Clock, Monitor, ChevronUp, Scissors, Music,
-  ChevronLeft, ChevronRight, Copy, Check
+  ChevronLeft, ChevronRight, Copy, Check, Wand2, Layers,
+  Play, Pause, Loader2, SlidersHorizontal, Settings, Pencil, Maximize2, Minimize2,
 } from 'lucide-react'
 import { useProjects } from '../contexts/ProjectContext'
 import type { GenSpaceRetakeSource } from '../contexts/ProjectContext'
 import { useAppSettings } from '../contexts/AppSettingsContext'
-import { useGeneration } from '../hooks/use-generation'
+import { useGeneration, getImageDimensions } from '../hooks/use-generation'
+import { useQueue, type QueuePayload } from '../contexts/QueueContext'
+import { ApiClient, type ApiRequestBodyOf } from '../lib/api-client'
 import { useVideoGenerationModelSpecs } from '../hooks/use-video-generation-model-specs'
+import { useImageGenerationModelSpecs } from '../hooks/use-image-generation-model-specs'
+import type { ImageModelSpec } from '../lib/image-generation-model-specs'
 import { createLocalGenerationError, type GenerationError } from '../lib/generation-errors'
 import { useRetake } from '../hooks/use-retake'
-import { useIcLora } from '../hooks/use-ic-lora'
-import type { ICLoraConditioningType } from '../components/ICLoraPanel'
+import { useLoraInferenceRegistry, type LoraInferenceEntry, type LoraInferenceConditioningType } from '../hooks/use-lora-inference-registry'
+import { LoraPickerPopover, type LoraPickerValue } from '../components/lora/LoraPickerPopover'
+import { ImageModelPicker } from '../components/ImageModelPicker'
+import { useIcLoraModelGate } from '../hooks/use-ic-lora-model-gate'
+import { ModelDownloadGate } from '../components/models/ModelDownloadGate'
 import type { Asset } from '../types/project-model'
 import { GenerationErrorDialog } from '../components/GenerationErrorDialog'
 import { addVisualAssetToProject } from '../lib/asset-copy'
@@ -27,18 +35,69 @@ import {
 } from '../lib/video-generation-model-specs'
 import { logger } from '../lib/logger'
 import { RetakePanel } from '../components/RetakePanel'
-import { ICLoraPanel, CONDITIONING_TYPES } from '../components/ICLoraPanel'
+import { SendToLoraModal } from '../components/lora/LoraModals'
 import { FreeApiKeyBubble } from '../components/FreeApiKeyBubble'
+import { SettingsDropdown, LightricksIcon } from '../components/ui/settings-dropdown'
+import { PopoverMenu } from '../components/ui/popover-menu'
+import { Switch } from '../components/ui/switch'
+import { Tooltip } from '../components/ui/tooltip'
+import { startGalleryImageEdit, toggleElementFullscreen } from './genspace-actions'
+
+const LORA_CONDITIONING_TYPES: { value: LoraInferenceConditioningType; label: string }[] = [
+  { value: 'canny', label: 'Canny' },
+  { value: 'depth', label: 'Depth' },
+  { value: 'pose', label: 'Pose' },
+]
+
+const LORA_STRENGTH_OPTIONS = [
+  { value: '0.5', label: '0.50' },
+  { value: '0.75', label: '0.75' },
+  { value: '1', label: '1.00' },
+  { value: '1.25', label: '1.25' },
+  { value: '1.5', label: '1.50' },
+  { value: '2', label: '2.00' },
+]
+
+// Supported IC-LoRA output durations (seconds @ 24fps). Mirrors the backend
+// `_IC_LORA_DURATIONS`. The reference is resampled / freeze-padded to match,
+// so this is the user's length control over an IC-LoRA generation — AR +
+// resolution stay reference-derived to keep the adapter on-distribution.
+const LORA_DURATION_OPTIONS = [
+  { value: '5', label: '5 Sec' },
+  { value: '6', label: '6 Sec' },
+  { value: '8', label: '8 Sec' },
+  { value: '10', label: '10 Sec' },
+]
+
+// IC-LoRA OUTPUT resolution. Stage-1 diffusion always runs at the adapter's
+// native 540p bucket (on-distribution, VRAM-safe); 720p/1080p are produced by
+// the spatial upsampler (Stage 2, x2) rather than diffusing natively at high
+// res — exactly like the t2v fast pipeline. A native 1080p first-pass overflows
+// a 32GB GPU and crawls, so we never take that path. Defaults to 540p.
+const LORA_RESOLUTION_OPTIONS = [
+  { value: '540p', label: '540p' },
+  { value: '720p', label: '720p' },
+  { value: '1080p', label: '1080p' },
+]
+
+function formatTime(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) seconds = 0
+  const m = Math.floor(seconds / 60)
+  const s = Math.floor(seconds % 60)
+  return `${m}:${s.toString().padStart(2, '0')}`
+}
 
 // Asset card with hover overlays
-function AssetCard({
+export function AssetCard({
   asset,
   onDelete,
   onPlay,
   onDragStart,
   onCreateVideo,
+  onEditImage,
   onRetake,
-  onIcLora,
+  onApplyLora,
+  onSendToLora,
   onToggleFavorite
 }: {
   asset: Asset
@@ -46,8 +105,10 @@ function AssetCard({
   onPlay: () => void
   onDragStart: (e: React.DragEvent, asset: Asset) => void
   onCreateVideo?: (asset: Asset) => void
+  onEditImage?: (asset: Asset) => void
   onRetake?: (asset: Asset) => void
-  onIcLora?: (asset: Asset) => void
+  onApplyLora?: (asset: Asset) => void
+  onSendToLora?: (asset: Asset) => void
   onToggleFavorite?: () => void
 }) {
   const hoverVideoRef = useRef<HTMLVideoElement>(null)
@@ -92,7 +153,7 @@ function AssetCard({
 
   return (
     <div
-      className="relative group cursor-pointer rounded-xl overflow-hidden bg-zinc-900"
+      className="relative group cursor-pointer rounded-xl overflow-hidden bg-zinc-900 asset-card-cq"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => {
         setIsHovered(false)
@@ -108,7 +169,7 @@ function AssetCard({
             <img
               src={pathToFileUrl(asset.bigThumbnailPath)}
               alt=""
-              className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-150 ${
+              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-150 ${
                 isHovered ? 'opacity-0' : 'opacity-100'
               }`}
             />
@@ -117,7 +178,7 @@ function AssetCard({
             <video
               ref={hoverVideoRef}
               src={pathToFileUrl(asset.path)}
-              className="absolute inset-0 w-full h-full object-contain"
+              className="absolute inset-0 w-full h-full object-cover"
               muted={isMuted}
               loop
               autoPlay
@@ -142,29 +203,40 @@ function AssetCard({
       )}
       
       {/* Hover overlay */}
-      <div className={`absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30 transition-opacity duration-200 ${
+      <div className={`absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30 transition-opacity duration-200 group-focus-within:opacity-100 ${
         isHovered ? 'opacity-100' : 'opacity-0'
       }`}>
         {/* Top buttons */}
-        <div className="absolute top-2 left-2 right-2 flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
+        <div className="absolute top-2 left-2 right-2 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 asset-card-top-row flex-1 min-w-0 overflow-x-auto no-scrollbar">
             <button
               onClick={(e) => { e.stopPropagation(); onToggleFavorite?.() }}
-              className={`p-1.5 rounded-lg backdrop-blur-md transition-colors ${
+              className={`p-1.5 rounded-lg backdrop-blur-md transition-colors shrink-0 ${
                 isFavorite ? 'bg-white/20 text-white' : 'bg-black/40 text-white hover:bg-black/60'
               }`}
             >
               <Heart className={`h-3.5 w-3.5 ${isFavorite ? 'fill-current' : ''}`} />
             </button>
-            
+
             {asset.type === 'image' && (
               <>
                 <button
+                  onClick={(e) => { e.stopPropagation(); onEditImage?.(asset) }}
+                  title="Edit image"
+                  aria-label="Edit image"
+                  className="asset-card-pill px-2.5 py-1.5 rounded-lg bg-black/40 backdrop-blur-md text-white hover:bg-black/60 transition-colors flex items-center gap-1.5 text-xs font-medium whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                >
+                  <Pencil className="h-3 w-3" />
+                  <span className="asset-card-label">Edit Image</span>
+                </button>
+                <button
                   onClick={(e) => { e.stopPropagation(); onCreateVideo?.(asset) }}
-                  className="px-2.5 py-1.5 rounded-lg bg-black/40 backdrop-blur-md text-white hover:bg-black/60 transition-colors flex items-center gap-1.5 text-xs font-medium whitespace-nowrap"
+                  title="Create video"
+                  aria-label="Create video"
+                  className="asset-card-pill px-2.5 py-1.5 rounded-lg bg-black/40 backdrop-blur-md text-white hover:bg-black/60 transition-colors flex items-center gap-1.5 text-xs font-medium whitespace-nowrap shrink-0"
                 >
                   <Film className="h-3 w-3" />
-                  Create video
+                  <span className="asset-card-label">Create video</span>
                 </button>
               </>
             )}
@@ -172,25 +244,37 @@ function AssetCard({
               <>
                 <button
                   onClick={(e) => { e.stopPropagation(); onRetake?.(asset) }}
-                  className="px-2.5 py-1.5 rounded-lg bg-black/40 backdrop-blur-md text-white hover:bg-black/60 transition-colors flex items-center gap-1.5 text-xs font-medium whitespace-nowrap"
+                  title="Retake"
+                  className="asset-card-pill px-2.5 py-1.5 rounded-lg bg-black/40 backdrop-blur-md text-white hover:bg-black/60 transition-colors flex items-center gap-1.5 text-xs font-medium whitespace-nowrap shrink-0"
                 >
                   <Scissors className="h-3 w-3" />
-                  Retake
+                  <span className="asset-card-label">Retake</span>
                 </button>
-                {onIcLora && (
+                {onApplyLora && (
                   <button
-                    onClick={(e) => { e.stopPropagation(); onIcLora(asset) }}
-                    className="px-2.5 py-1.5 rounded-lg bg-black/40 backdrop-blur-md text-white hover:bg-black/60 transition-colors flex items-center gap-1.5 text-xs font-medium whitespace-nowrap"
+                    onClick={(e) => { e.stopPropagation(); onApplyLora(asset) }}
+                    title="Apply LoRA"
+                    className="asset-card-pill px-2.5 py-1.5 rounded-lg bg-black/40 backdrop-blur-md text-white hover:bg-black/60 transition-colors flex items-center gap-1.5 text-xs font-medium whitespace-nowrap shrink-0"
                   >
-                    <Sparkles className="h-3 w-3" />
-                    IC-LoRA
+                    <Layers className="h-3 w-3" />
+                    <span className="asset-card-label">Apply LoRA</span>
+                  </button>
+                )}
+                {onSendToLora && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onSendToLora(asset) }}
+                    title="Add this clip to a LoRA training dataset"
+                    className="asset-card-pill px-2.5 py-1.5 rounded-lg bg-black/40 backdrop-blur-md text-white hover:bg-black/60 transition-colors flex items-center gap-1.5 text-xs font-medium whitespace-nowrap shrink-0"
+                  >
+                    <Wand2 className="h-3 w-3" />
+                    <span className="asset-card-label">To LoRA</span>
                   </button>
                 )}
               </>
             )}
           </div>
-          
-          <div className="flex items-center gap-1.5">
+
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
               onClick={handleDownload}
               className="p-1.5 rounded-lg bg-black/40 backdrop-blur-md text-white hover:bg-black/60 transition-colors"
@@ -204,7 +288,7 @@ function AssetCard({
         {/* Bottom controls for video */}
         {asset.type === 'video' && (
           <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 asset-card-bottom-row">
               <div className="px-2 py-1 rounded-lg bg-black/50 backdrop-blur-md text-white text-xs font-mono">
                 {formatTime(currentTime)}
               </div>
@@ -234,7 +318,7 @@ function AssetCard({
                       setIsMuted(false)
                     }
                   }}
-                  className="w-16 h-1 accent-white cursor-pointer"
+                  className="asset-card-vol-slider w-16 h-1 accent-white cursor-pointer"
                   aria-label="Volume"
                 />
               </div>
@@ -257,105 +341,6 @@ function AssetCard({
   )
 }
 
-// Dropdown component for settings
-function SettingsDropdown({ 
-  trigger, 
-  options, 
-  value, 
-  onChange,
-  title 
-}: { 
-  trigger: React.ReactNode
-  options: { value: string; label: string; disabled?: boolean; tooltip?: string; icon?: React.ReactNode }[]
-  value: string
-  onChange: (value: string) => void
-  title: string
-}) {
-  const [isOpen, setIsOpen] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
-  
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setIsOpen(false)
-      }
-    }
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [isOpen])
-  
-  return (
-    <div ref={dropdownRef} className="relative">
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className={`flex shrink-0 items-center gap-1 whitespace-nowrap px-2 py-1.5 rounded-md transition-colors ${isOpen ? 'bg-zinc-700 hover:bg-zinc-700' : 'hover:bg-zinc-800'}`}
-      >
-        {trigger}
-      </button>
-      
-      {isOpen && (
-        <div className="absolute bottom-full left-0 mb-2 bg-zinc-800 border border-zinc-700 rounded-md p-2 min-w-[160px] shadow-xl z-[9999]">
-          <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-2">{title}</div>
-          <div className="space-y-1">
-            {options.map(option => (
-              <div key={option.value} className="relative group/option">
-                <button
-                  onClick={() => { if (!option.disabled) { onChange(option.value); setIsOpen(false) } }}
-                  className={`w-full flex items-center justify-between px-2 py-2 rounded-md transition-colors text-left ${
-                    option.disabled
-                      ? 'cursor-not-allowed'
-                      : value === option.value ? 'bg-white/20 hover:bg-white/25' : 'hover:bg-zinc-700'
-                  }`}
-                >
-                  <span className={`flex items-center gap-2.5 text-sm ${
-                    option.disabled 
-                      ? 'text-zinc-600' 
-                      : value === option.value ? 'text-white' : 'text-zinc-400'
-                  }`}>
-                    {option.icon && <span className="flex-shrink-0">{option.icon}</span>}
-                    {option.label}
-                  </span>
-                  {value === option.value && !option.disabled && (
-                    <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </button>
-                {option.disabled && option.tooltip && (
-                  <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-zinc-700 rounded text-xs text-zinc-300 whitespace-nowrap opacity-0 group-hover/option:opacity-100 pointer-events-none z-[10000] transition-opacity">
-                    {option.tooltip}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// Lightricks brand icon
-function LightricksIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path fillRule="evenodd" clipRule="evenodd" d="M17.0073 8.18934C16.3266 5.6556 14.9346 2.06903 12.3065 2.06903C9.27204 2.06903 6.86627 7.24621 5.45487 11.7948C4.79654 13.9203 4.35877 15.9049 4.17755 17.1736C4.10214 17.5829 4.06274 18.0044 4.06274 18.4347C4.06274 22.2903 7.22553 25.4338 11.1133 25.4338C15.5206 25.4338 23.9376 22.7073 23.9376 18.4347C23.9376 17.1179 23.1376 15.948 21.9018 14.9595L21.9039 14.9575C22.4493 13.7707 22.847 12.648 23.001 11.705C23.1934 10.5053 23.0074 9.5494 22.4429 8.88217C21.7692 8.07382 20.7107 7.85572 19.6586 7.84288C18.8826 7.84288 17.9777 7.96904 17.0073 8.18934ZM8.00176 9.17083C7.6945 9.93266 7.02317 11.7419 6.70157 12.9799C7.93005 11.9987 9.2965 11.1653 10.7091 10.4796C12.2325 9.73758 13.9171 9.06448 15.518 8.58411C15.08 6.98293 13.9585 3.62158 12.3129 3.62158C11.0298 3.62158 9.41958 5.69374 8.00176 9.17083ZM20.6201 14.083L20.6209 14.0786C21.0507 13.1163 21.3522 12.2118 21.4741 11.4547C21.5511 10.9607 21.5832 10.2872 21.2752 9.89577C20.9416 9.46599 20.1975 9.39543 19.6521 9.38901C18.9932 9.38901 18.2117 9.49943 17.3641 9.69208L17.3683 9.69702C17.586 10.7217 17.7526 11.772 17.8808 12.7968C18.8527 13.16 19.7877 13.5908 20.6201 14.083ZM15.8828 10.0897C14.6739 10.4588 13.4041 10.9464 12.209 11.4846C13.4346 11.588 14.8471 11.8527 16.2581 12.2608C16.1554 11.5367 16.0273 10.8061 15.8799 10.0948L15.8828 10.0897ZM11.1133 12.9816C8.07878 12.9816 5.60884 15.4258 5.60884 18.4347C5.60884 21.4435 8.07878 23.8878 11.1133 23.8878C13.8701 23.8878 16.3653 21.6639 16.6048 18.9158C16.7011 17.7546 16.669 15.9263 16.4637 13.9311C14.6294 13.3385 12.6763 12.9816 11.1133 12.9816ZM18.3883 22.2069C17.7984 22.4697 17.1711 22.7085 16.5284 22.9184C18.0872 21.3274 19.8832 18.8193 21.1982 16.3689L21.1997 16.3654C21.9756 17.0509 22.3915 17.7593 22.3915 18.4347C22.3915 19.6985 20.9288 21.0778 18.3883 22.2069ZM19.9493 15.4655L19.9473 15.4707C19.4291 16.4567 18.8221 17.4625 18.1833 18.4092C18.2214 17.4089 18.1892 16.0386 18.0611 14.5212C18.71 14.7948 19.3456 15.1021 19.9493 15.4655Z" fill="currentColor" />
-    </svg>
-  )
-}
-
-function ZitIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M19.113 12.2515H16.5605L14.008 8.63382L6.04545 19.9068H8.60348L14.0079 12.2518L16.5605 12.2515L11.156 19.9068H13.721L19.113 12.2515V15.8693L16.2716 19.9073V22.0063H2L14.008 5L19.113 12.2515Z" fill="currentColor"/>
-      <path d="M26 22.0064L21.9704 22.0063V19.9151L19.113 15.8693V12.2515L26 22.0064Z" fill="currentColor"/>
-    </svg>
-  )
-}
-
-// Square icon for aspect ratio
 function AspectIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -365,11 +350,194 @@ function AspectIcon({ className }: { className?: string }) {
 }
 
 // Prompt bar component matching the design
+// One-shot "write my prompt" button for the IC-LoRA toolbars. Calls Gemini
+// Flash with the reference video + the LoRA's per-LoRA system prompt and fills
+// the prompt box. Disabled until a reference video is attached and a Gemini
+// API key is configured.
+function AutoPromptButton({
+  onClick,
+  loading,
+  disabled,
+  hasKey,
+  hasRefVideo,
+  iconOnly = false,
+}: {
+  onClick: () => void
+  loading: boolean
+  disabled: boolean
+  hasKey: boolean
+  hasRefVideo: boolean
+  /** Compact icon-only render for the prompt-box overlay (no "Auto" label). */
+  iconOnly?: boolean
+}) {
+  const title = !hasKey
+    ? 'Add a Gemini API key in Settings to auto-write a prompt from the reference video.'
+    : !hasRefVideo
+      ? 'Attach a reference video to auto-write a prompt.'
+      : 'Auto-write a prompt from the reference video using Gemini Flash.'
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled || loading}
+      title={title}
+      className={`flex shrink-0 items-center gap-1 rounded-md text-blue-300 hover:bg-blue-600/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent ${
+        iconOnly ? 'p-1.5 bg-zinc-800/80 backdrop-blur-sm ring-1 ring-zinc-700' : 'px-2 py-1.5'
+      }`}
+    >
+      {loading ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+      ) : (
+        <Wand2 className="h-3.5 w-3.5" />
+      )}
+      {!iconOnly && <span className="text-[10px] uppercase tracking-wide">Auto</span>}
+    </button>
+  )
+}
+
+// One strength slider row: label + live numeric readout + range input.
+// Replaces the old discrete LORA_STRENGTH_OPTIONS dropdowns with a continuous
+// 0.00–2.00 control, which is friendlier in a combined popover.
+function SliderRow({
+  label,
+  value,
+  onChange,
+  help,
+}: {
+  label: string
+  value: number
+  onChange: (next: number) => void
+  help?: string
+}) {
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-zinc-300" title={help}>{label}</span>
+        <span className="text-xs text-zinc-400 font-medium tabular-nums">{value.toFixed(2)}</span>
+      </div>
+      <input
+        type="range"
+        min={0}
+        max={2}
+        step={0.05}
+        value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+        className="w-full h-1.5 accent-blue-500 cursor-pointer"
+      />
+    </div>
+  )
+}
+
+// Combined Strengths popover. For video_input_ic_lora it shows SCALE + COND
+// (the "combine scale and condition strengths" control); for union_control it
+// shows only the control strength (STR). Both reuse the existing handlers.
+function StrengthsPopover({
+  scale,
+  onScaleChange,
+  condStrength,
+  onCondStrengthChange,
+  showScale,
+}: {
+  scale: number
+  onScaleChange: (next: number) => void
+  condStrength: number
+  onCondStrengthChange: (next: number) => void
+  showScale: boolean
+}) {
+  const triggerTitle = showScale
+    ? 'Strengths — LoRA scale and conditioning strength. Lower = subtler, higher = stronger.'
+    : 'Control strength — how tightly the output follows the control signal. Lower = looser, higher = more rigid.'
+  return (
+    <PopoverMenu
+      title="STRENGTHS"
+      triggerTitle={triggerTitle}
+      trigger={
+        <>
+          <SlidersHorizontal className="h-3.5 w-3.5" />
+          {showScale ? (
+            // Two sliders inside → a single number on the closed trigger would
+            // be ambiguous (which one?), so show a neutral label instead.
+            <span className="text-zinc-300 font-medium">Strengths</span>
+          ) : (
+            <>
+              <span className="text-zinc-500 text-[10px]">STR</span>
+              <span className="text-zinc-300 font-medium">{condStrength.toFixed(2)}</span>
+            </>
+          )}
+          <ChevronUp className="h-3 w-3 text-zinc-500" />
+        </>
+      }
+    >
+      <div className="w-[200px] space-y-3">
+        {showScale && (
+          <SliderRow
+            label="LoRA scale"
+            value={scale}
+            onChange={onScaleChange}
+            help="How strongly the LoRA adapter weights influence the base model."
+          />
+        )}
+        <SliderRow
+          label={showScale ? 'Conditioning' : 'Control strength'}
+          value={condStrength}
+          onChange={onCondStrengthChange}
+          help={
+            showScale
+              ? "How tightly the output follows the reference video's motion and structure."
+              : 'How tightly the output follows the control signal.'
+          }
+        />
+      </div>
+    </PopoverMenu>
+  )
+}
+
+// Settings popover: the two boolean output options as switches, replacing the
+// old on-bar REFINE + AUDIO buttons. "Stage 2" is the renamed refine toggle.
+function SettingsPopover({
+  refine,
+  onRefineChange,
+  preserveAudio,
+  onPreserveAudioChange,
+}: {
+  refine: boolean
+  onRefineChange: (next: boolean) => void
+  preserveAudio: boolean
+  onPreserveAudioChange: (next: boolean) => void
+}) {
+  return (
+    <PopoverMenu
+      title="SETTINGS"
+      triggerTitle="Output settings — Stage 2 refine and audio."
+      trigger={
+        <>
+          <Settings className="h-3.5 w-3.5" />
+          <ChevronUp className="h-3 w-3 text-zinc-500" />
+        </>
+      }
+    >
+      <div className="w-[230px] space-y-0.5">
+        <Switch
+          checked={refine}
+          onChange={onRefineChange}
+          label="Stage 2"
+          description="2× upsample + detail pass after generation."
+        />
+        <Switch
+          checked={preserveAudio}
+          onChange={onPreserveAudioChange}
+          label="Preserve audio"
+          description="Use the reference video's audio, trimmed to output length."
+        />
+      </div>
+    </PopoverMenu>
+  )
+}
+
 // Two-row layout: prompt row on top, settings row below
 function PromptBar({
   mode,
   onModeChange,
-  canUseIcLora,
   prompt,
   onPromptChange,
   onGenerate,
@@ -382,17 +550,50 @@ function PromptBar({
   onSettingsChange,
   videoModelSpecs,
   videoSettingsMessage,
+  imageModelSpecs,
+  selectedImageModelId,
+  onSelectImageModel,
+  onRefreshImageModelSpecs,
+  imageSettingsMessage,
+  imageEditModelSelected,
   canGenerate,
   buttonLabel,
   buttonIcon,
-  icLoraCondType,
-  onIcLoraCondTypeChange,
-  icLoraStrength,
-  onIcLoraStrengthChange,
+  selectedLora,
+  forceApiGenerations,
+  loraScale,
+  onLoraScaleChange,
+  loraCondType,
+  onLoraCondTypeChange,
+  loraCondStrength,
+  onLoraCondStrengthChange,
+  loraRefVideo,
+  onLoraRefVideoChange,
+  loraDuration,
+  onLoraDurationChange,
+  loraResolution,
+  onLoraResolutionChange,
+  loraRefine,
+  onLoraRefineChange,
+  preserveAudio,
+  onPreserveAudioChange,
+  onAutoPrompt,
+  autoPromptLoading,
+  autoPromptAvailable,
+  autoPromptHasKey,
+  loraPickerOpen,
+  onToggleLoraPicker,
+  onClearLora,
+  onSelectLora,
+  onDeletedLora,
+  loraEntries,
+  loraLoading,
+  loraError,
+  onRefreshLora,
+  promptTextareaRef,
 }: {
-  mode: 'image' | 'video' | 'retake' | 'ic-lora'
-  onModeChange: (mode: 'image' | 'video' | 'retake' | 'ic-lora') => void
-  canUseIcLora: boolean
+  mode: 'image' | 'video' | 'retake'
+  onModeChange: (mode: 'image' | 'video' | 'retake') => void
   prompt: string
   onPromptChange: (prompt: string) => void
   onGenerate: () => void
@@ -417,17 +618,70 @@ function PromptBar({
   onSettingsChange: (settings: any) => void
   videoModelSpecs: VideoGenerationModelSpecItem[]
   videoSettingsMessage?: string | null
-  icLoraCondType?: ICLoraConditioningType
-  onIcLoraCondTypeChange?: (type: ICLoraConditioningType) => void
-  icLoraStrength?: number
-  onIcLoraStrengthChange?: (strength: number) => void
+  imageModelSpecs: ImageModelSpec[]
+  selectedImageModelId: string
+  onSelectImageModel: (id: string) => void
+  onRefreshImageModelSpecs: () => void
+  imageSettingsMessage: string | null
+  // True when the selected image model is an instruction-based editing model
+  // (FLUX.2 [klein] 9B). Shows the input-image slot in image mode so the user
+  // can supply a reference image to edit.
+  imageEditModelSelected: boolean
+  selectedLora: LoraInferenceEntry | null
+  forceApiGenerations: boolean
+  loraScale: number
+  onLoraScaleChange: (scale: number) => void
+  loraCondType: LoraInferenceConditioningType
+  onLoraCondTypeChange: (type: LoraInferenceConditioningType) => void
+  loraCondStrength: number
+  onLoraCondStrengthChange: (strength: number) => void
+  loraRefVideo: string | null
+  onLoraRefVideoChange: (path: string | null) => void
+  loraDuration: number
+  onLoraDurationChange: (duration: number) => void
+  loraResolution: '540p' | '720p' | '1080p'
+  onLoraResolutionChange: (resolution: '540p' | '720p' | '1080p') => void
+  loraRefine: boolean
+  onLoraRefineChange: (refine: boolean) => void
+  preserveAudio: boolean
+  onPreserveAudioChange: (preserve: boolean) => void
+  onAutoPrompt: () => void
+  autoPromptLoading: boolean
+  autoPromptAvailable: boolean
+  autoPromptHasKey: boolean
+  loraPickerOpen: boolean
+  onToggleLoraPicker: () => void
+  onClearLora: () => void
+  onSelectLora: (entry: LoraInferenceEntry) => void
+  onDeletedLora?: (deletedId: string) => void
+  loraEntries: LoraInferenceEntry[]
+  loraLoading: boolean
+  loraError: string | null
+  onRefreshLora: () => void
+  promptTextareaRef?: React.RefObject<HTMLTextAreaElement>
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const audioInputRef = useRef<HTMLInputElement>(null)
+  const videoInputRef = useRef<HTMLInputElement>(null)
   const [isDragOver, setIsDragOver] = useState(false)
   const [isAudioDragOver, setIsAudioDragOver] = useState(false)
+  const [isVideoDragOver, setIsVideoDragOver] = useState(false)
   const isRetake = mode === 'retake'
-  const isIcLora = mode === 'ic-lora'
+  // LoRAs that drive generation off a reference video replace the image/audio
+  // I2V/A2V slots; a standard (style) LoRA stacks on top of a normal video gen
+  // so the image/audio slots stay visible.
+  const loraNeedsRefVideo = selectedLora !== null
+    && (selectedLora.variant === 'union_control' || selectedLora.variant === 'video_input_ic_lora')
+  const showImageAudioSlots = mode === 'video' && !isRetake && !loraNeedsRefVideo
+  // Image editing (FLUX.2 Klein): show the input-image slot in image mode when
+  // an edit model is selected, so the user can drop a reference image to edit.
+  // Audio isn't relevant for image editing, so the audio slot stays video-only.
+  const showEditImageSlot = mode === 'image' && imageEditModelSelected
+  const showImageSlot = showImageAudioSlots || showEditImageSlot
+  const showRefVideoSlot = mode === 'video' && !isRetake && loraNeedsRefVideo
+  // Auto-prompt overlay lives on the prompt box (not the crowded bottom row)
+  // and is only relevant for the reference-video LoRA variants.
+  const showAutoPromptOverlay = showRefVideoSlot
   const resolvedVideoOptions = mode === 'video'
     ? resolveVideoGenerationOptions({
         settings,
@@ -502,6 +756,28 @@ function PromptBar({
     }
   }
   
+  const handleVideoFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file && file.type.startsWith('video/')) {
+      const filePath = window.electronAPI?.getPathForFile(file)
+      if (filePath) {
+        onLoraRefVideoChange(filePath)
+      }
+    }
+  }
+
+  const handleVideoDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsVideoDragOver(false)
+    const assetData = e.dataTransfer.getData('asset')
+    if (assetData) {
+      const asset = JSON.parse(assetData) as Asset
+      if (asset.type === 'video') {
+        onLoraRefVideoChange(asset.path)
+      }
+    }
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey && !isGenerating && canGenerate) {
       e.preventDefault()
@@ -513,9 +789,13 @@ function PromptBar({
     <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-visible">
       {/* Top row: Image ref | Prompt | Generate */}
       <div className="flex items-start">
-        {/* Input image drop zone — video mode only (I2V) */}
-        {mode === 'video' && !isRetake && !isIcLora && (
+        {/* Input image drop zone — video I2V, or image editing (Klein) when an
+            edit model is selected. Hidden when a LoRA that drives generation
+            off a reference video is active. */}
+        {showImageSlot && (
           <div
+            role={showEditImageSlot ? 'group' : undefined}
+            aria-label={showEditImageSlot ? (inputImage ? 'Selected image edit input' : 'Image edit input') : undefined}
             className={`relative w-10 h-10 mx-2 mt-2 rounded-lg border-2 border-dashed transition-colors flex items-center justify-center flex-shrink-0 cursor-pointer ${
               isDragOver ? 'border-blue-500 bg-blue-500/10' : 'border-zinc-700 hover:border-zinc-500'
             }`}
@@ -523,12 +803,14 @@ function PromptBar({
             onDragLeave={() => setIsDragOver(false)}
             onDrop={handleDrop}
             onClick={() => inputRef.current?.click()}
+            title={showEditImageSlot ? (inputImage ? 'Reference image — click to change' : 'Add a reference image to edit') : undefined}
           >
             {inputImage ? (
               <>
-                <img src={pathToFileUrl(inputImage)} alt="" className="w-full h-full object-cover rounded-md" />
+                <img src={pathToFileUrl(inputImage)} alt={showEditImageSlot ? 'Selected image edit input' : ''} className="w-full h-full object-cover rounded-md" />
                 <button
                   onClick={(e) => { e.stopPropagation(); onInputImageChange(null) }}
+                  aria-label={showEditImageSlot ? 'Remove image edit input' : 'Remove input image'}
                   className="absolute -top-1 -right-1 p-0.5 rounded-full bg-zinc-800 text-zinc-400 hover:text-white z-10"
                 >
                   <X className="h-3 w-3" />
@@ -547,8 +829,8 @@ function PromptBar({
           </div>
         )}
 
-        {/* Audio drop zone — only in video mode */}
-        {mode === 'video' && !isRetake && !isIcLora && (
+        {/* Audio drop zone — only in video mode without a ref-video LoRA */}
+        {showImageAudioSlots && (
           <div
             className={`relative w-10 h-10 mt-2 rounded-lg border-2 border-dashed transition-colors flex items-center justify-center flex-shrink-0 cursor-pointer ${
               isAudioDragOver ? 'border-emerald-500 bg-emerald-500/10' : inputAudio ? 'border-emerald-600' : 'border-zinc-700 hover:border-zinc-500'
@@ -582,22 +864,72 @@ function PromptBar({
           </div>
         )}
 
+        {/* Reference video slot — union_control / video_input_ic_lora LoRAs
+            drive generation off a source clip (canny/depth/pose or raw video
+            input). Drag a video asset here or click to pick a file. */}
+        {showRefVideoSlot && (
+          <div
+            className={`relative w-10 h-10 mx-2 mt-2 rounded-lg border-2 border-dashed transition-colors flex items-center justify-center flex-shrink-0 cursor-pointer ${
+              isVideoDragOver ? 'border-blue-500 bg-blue-500/10' : loraRefVideo ? 'border-blue-600' : 'border-zinc-700 hover:border-zinc-500'
+            }`}
+            onDragOver={(e) => { e.preventDefault(); setIsVideoDragOver(true) }}
+            onDragLeave={() => setIsVideoDragOver(false)}
+            onDrop={handleVideoDrop}
+            onClick={() => videoInputRef.current?.click()}
+            title={loraRefVideo ? 'Reference video attached — click to change' : 'Attach a reference video'}
+          >
+            {loraRefVideo ? (
+              <>
+                <video src={pathToFileUrl(loraRefVideo)} className="w-full h-full object-cover rounded-md" muted />
+                <button
+                  onClick={(e) => { e.stopPropagation(); onLoraRefVideoChange(null) }}
+                  className="absolute -top-1 -right-1 p-0.5 rounded-full bg-zinc-800 text-zinc-400 hover:text-white z-10"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </>
+            ) : (
+              <Film className="h-4 w-4 text-zinc-500" />
+            )}
+            <input
+              ref={videoInputRef}
+              type="file"
+              accept="video/*"
+              onChange={handleVideoFileSelect}
+              className="hidden"
+            />
+          </div>
+        )}
+
         {/* Prompt input - fills remaining width */}
-        <div className="flex-1 min-w-0 py-1">
+        <div className="relative flex-1 min-w-0 py-1">
           <textarea
+            ref={promptTextareaRef}
             value={prompt}
             onChange={(e) => onPromptChange(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={mode === 'retake'
               ? "Describe what should happen in the selected section..."
-              : mode === 'ic-lora'
-                ? "Describe the style or transformation to apply..."
+              : loraNeedsRefVideo
+                ? "Describe the style or transformation to apply to the reference video..."
               : mode === 'image'
                 ? "A close-up of a woman talking on the phone..."
                 : "The woman sips from a cup of coffee..."
             }
-            className="w-full bg-transparent text-white text-sm placeholder:text-zinc-500 focus:outline-none px-2 py-2 resize-none overflow-y-auto h-[70px] leading-5"
+            className="w-full bg-transparent text-white text-sm placeholder:text-zinc-500 focus:outline-none px-2 py-2 pr-9 resize-none overflow-y-auto h-[70px] leading-5"
           />
+          {showAutoPromptOverlay && (
+            <div className="absolute top-1 right-1">
+              <AutoPromptButton
+                onClick={onAutoPrompt}
+                loading={autoPromptLoading}
+                disabled={!autoPromptAvailable}
+                hasKey={autoPromptHasKey}
+                hasRefVideo={!!loraRefVideo}
+                iconOnly
+              />
+            </div>
+          )}
         </div>
 
       </div>
@@ -608,70 +940,222 @@ function PromptBar({
         <SettingsDropdown
           title="MODE"
           value={mode}
-          onChange={(v) => onModeChange(v as 'image' | 'video' | 'retake' | 'ic-lora')}
+          onChange={(v) => onModeChange(v as 'image' | 'video' | 'retake')}
           options={[
             { value: 'image', label: 'Generate Images', icon: <Image className="h-4 w-4" /> },
             { value: 'video', label: 'Generate Videos', icon: <Video className="h-4 w-4" /> },
             { value: 'retake', label: 'Retake', icon: <Scissors className="h-4 w-4" /> },
-            ...(canUseIcLora ? [{ value: 'ic-lora', label: 'IC-LoRA', icon: <Sparkles className="h-4 w-4" /> }] : []),
           ]}
           trigger={
             <>
-              {mode === 'image' ? <Image className="h-3.5 w-3.5" /> : mode === 'retake' ? <Scissors className="h-3.5 w-3.5" /> : mode === 'ic-lora' ? <Sparkles className="h-3.5 w-3.5" /> : <Video className="h-3.5 w-3.5" />}
-              <span className="text-zinc-300 font-medium">{mode === 'image' ? 'Image' : mode === 'retake' ? 'Retake' : mode === 'ic-lora' ? 'IC-LoRA' : 'Video'}</span>
+              {mode === 'image' ? <Image className="h-3.5 w-3.5" /> : mode === 'retake' ? <Scissors className="h-3.5 w-3.5" /> : <Video className="h-3.5 w-3.5" />}
+              <span className="text-zinc-300 font-medium">{mode === 'image' ? 'Image' : mode === 'retake' ? 'Retake' : 'Video'}</span>
               <ChevronUp className="h-3 w-3 text-zinc-500" />
             </>
           }
         />
-        
+
+        {/* LoRA pill — opens the picker popover. Only relevant in video mode;
+            hidden in retake/image where no adapter applies. Standard LoRAs
+            stack on a normal video gen; union_control / video_input_ic_lora
+            switch the prompt bar into reference-video mode. Hidden entirely
+            when local generation is unavailable (forceApiGenerations): LoRAs
+            run on the local GPU and can't be applied via the cloud API. */}
+        {mode === 'video' && !isRetake && !forceApiGenerations && (
+          <div className="relative flex items-center gap-0.5">
+            <button
+              type="button"
+              onClick={onToggleLoraPicker}
+              aria-haspopup="dialog"
+              aria-expanded={loraPickerOpen}
+              aria-label={selectedLora ? `Change applied LoRA, currently ${selectedLora.name}` : 'Apply a LoRA'}
+              className={`flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors max-w-[150px] ${
+                selectedLora
+                  ? 'bg-blue-600/20 text-blue-200 ring-1 ring-blue-500/40'
+                  : 'bg-zinc-800/50 text-zinc-300 hover:bg-zinc-800'
+              }`}
+            >
+              <Layers className="h-3.5 w-3.5 shrink-0" />
+              {selectedLora ? (
+                <Tooltip content={selectedLora.name} side="top">
+                  <span className="font-medium max-w-[72px] min-w-0 truncate">{selectedLora.name}</span>
+                </Tooltip>
+              ) : (
+                <span className="font-medium max-w-[72px] min-w-0 truncate">Apply LoRA</span>
+              )}
+            </button>
+            {selectedLora && (
+              <button
+                type="button"
+                onClick={onClearLora}
+                aria-label={`Remove ${selectedLora.name}`}
+                className="rounded-md p-1 text-blue-200 hover:bg-blue-500/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                title="Remove LoRA"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+            <LoraPickerPopover
+              open={loraPickerOpen}
+              selectedId={selectedLora?.id ?? null}
+              conditioningType={loraCondType}
+              entries={loraEntries}
+              loading={loraLoading}
+              error={loraError}
+              onRefresh={onRefreshLora}
+              onSelect={(value: LoraPickerValue) => {
+                onSelectLora(value.entry)
+                onLoraCondTypeChange(value.conditioningType)
+                onToggleLoraPicker()
+              }}
+              onClose={onToggleLoraPicker}
+              onDeleted={onDeletedLora}
+            />
+          </div>
+        )}
+
         <div className="flex-1" />
-        
+
         {isRetake ? (
           <div className="text-[10px] text-zinc-500 pr-2">Trim in the panel above, then retake</div>
-        ) : isIcLora ? (
+        ) : mode === 'video' && selectedLora?.variant === 'union_control' ? (
           <>
             <SettingsDropdown
-              title="CONDITIONING TYPE"
-              value={icLoraCondType || 'canny'}
-              onChange={(v) => onIcLoraCondTypeChange?.(v as ICLoraConditioningType)}
-              options={CONDITIONING_TYPES.map(ct => ({ value: ct.value, label: ct.label }))}
+              title="DURATION"
+              value={String(loraDuration)}
+              onChange={(v) => onLoraDurationChange(parseInt(v))}
+              options={LORA_DURATION_OPTIONS}
+              tooltip="Output length — the generated video duration. The reference is resampled or freeze-padded to match."
               trigger={
                 <>
-                  <span className="text-zinc-300 font-medium">{CONDITIONING_TYPES.find(ct => ct.value === icLoraCondType)?.label || 'Canny Edges'}</span>
+                  <Clock className="h-3.5 w-3.5" />
+                  <span>{loraDuration}s</span>
                   <ChevronUp className="h-3 w-3 text-zinc-500" />
                 </>
               }
             />
             <div className="w-px h-4 bg-zinc-700 mx-0.5" />
             <SettingsDropdown
-              title="STRENGTH"
-              value={String(icLoraStrength ?? 1.0)}
-              onChange={(v) => onIcLoraStrengthChange?.(parseFloat(v))}
-              options={[
-                { value: '0.5', label: '0.50' },
-                { value: '0.75', label: '0.75' },
-                { value: '1', label: '1.00' },
-                { value: '1.25', label: '1.25' },
-                { value: '1.5', label: '1.50' },
-                { value: '2', label: '2.00' },
-              ]}
+              title="RESOLUTION"
+              value={loraResolution}
+              onChange={(v) => onLoraResolutionChange(v as '540p' | '720p' | '1080p')}
+              options={LORA_RESOLUTION_OPTIONS}
+              tooltip="Output resolution. Every setting diffuses at the adapter's native 540p (on-distribution, fast); 720p/1080p are produced by the upsampler, so they stay VRAM-safe instead of diffusing natively at high res."
               trigger={
                 <>
-                  <span className="text-zinc-500 text-[10px]">STR</span>
-                  <span className="text-zinc-300 font-medium">{(icLoraStrength ?? 1.0).toFixed(2)}</span>
+                  <Monitor className="h-3.5 w-3.5" />
+                  <span>{loraResolution.replace('p', '')}</span>
                   <ChevronUp className="h-3 w-3 text-zinc-500" />
                 </>
               }
             />
+            <div className="w-px h-4 bg-zinc-700 mx-0.5" />
+            <SettingsDropdown
+              title="CONDITIONING TYPE"
+              value={loraCondType}
+              onChange={(v) => onLoraCondTypeChange(v as LoraInferenceConditioningType)}
+              options={LORA_CONDITIONING_TYPES.map(ct => ({ value: ct.value, label: ct.label }))}
+              tooltip="Control signal — the structural cue extracted from the reference (canny edges, depth, or pose) that the output follows."
+              trigger={
+                <>
+                  <span className="text-zinc-300 font-medium">{LORA_CONDITIONING_TYPES.find(ct => ct.value === loraCondType)?.label || 'Canny'}</span>
+                  <ChevronUp className="h-3 w-3 text-zinc-500" />
+                </>
+              }
+            />
+            <div className="w-px h-4 bg-zinc-700 mx-0.5" />
+            <StrengthsPopover
+              scale={loraScale}
+              onScaleChange={onLoraScaleChange}
+              condStrength={loraCondStrength}
+              onCondStrengthChange={onLoraCondStrengthChange}
+              showScale={false}
+            />
+            <div className="w-px h-4 bg-zinc-700 mx-0.5" />
+            <SettingsPopover
+              refine={loraRefine}
+              onRefineChange={onLoraRefineChange}
+              preserveAudio={preserveAudio}
+              onPreserveAudioChange={onPreserveAudioChange}
+            />
+          </>
+        ) : mode === 'video' && selectedLora?.variant === 'video_input_ic_lora' ? (
+          <>
+            <SettingsDropdown
+              title="DURATION"
+              value={String(loraDuration)}
+              onChange={(v) => onLoraDurationChange(parseInt(v))}
+              options={LORA_DURATION_OPTIONS}
+              tooltip="Output length — the generated video duration. The reference is resampled or freeze-padded to match."
+              trigger={
+                <>
+                  <Clock className="h-3.5 w-3.5" />
+                  <span>{loraDuration}s</span>
+                  <ChevronUp className="h-3 w-3 text-zinc-500" />
+                </>
+              }
+            />
+            <div className="w-px h-4 bg-zinc-700 mx-0.5" />
+            <SettingsDropdown
+              title="RESOLUTION"
+              value={loraResolution}
+              onChange={(v) => onLoraResolutionChange(v as '540p' | '720p' | '1080p')}
+              options={LORA_RESOLUTION_OPTIONS}
+              tooltip="Output resolution. Every setting diffuses at the adapter's native 540p (on-distribution, fast); 720p/1080p are produced by the upsampler, so they stay VRAM-safe instead of diffusing natively at high res."
+              trigger={
+                <>
+                  <Monitor className="h-3.5 w-3.5" />
+                  <span>{loraResolution.replace('p', '')}</span>
+                  <ChevronUp className="h-3 w-3 text-zinc-500" />
+                </>
+              }
+            />
+            <div className="w-px h-4 bg-zinc-700 mx-0.5" />
+            <StrengthsPopover
+              scale={loraScale}
+              onScaleChange={onLoraScaleChange}
+              condStrength={loraCondStrength}
+              onCondStrengthChange={onLoraCondStrengthChange}
+              showScale
+            />
+            <div className="w-px h-4 bg-zinc-700 mx-0.5" />
+            <SettingsPopover
+              refine={loraRefine}
+              onRefineChange={onLoraRefineChange}
+              preserveAudio={preserveAudio}
+              onPreserveAudioChange={onPreserveAudioChange}
+            />
           </>
         ) : mode === 'image' ? (
           <>
-            {/* Model indicator */}
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-zinc-800/50">
-              <ZitIcon className="h-3.5 w-3.5" />
-              <span className="text-zinc-300 font-medium">Z-Image Turbo</span>
-            </div>
-            
+            {/* Model picker — replaces the static Z-Image badge. Lists every
+                catalogued image model with per-row download + tooltips. */}
+            <ImageModelPicker
+              specs={imageModelSpecs}
+              selectedId={selectedImageModelId}
+              onSelect={onSelectImageModel}
+              onSpecsChanged={onRefreshImageModelSpecs}
+            />
+
+            {/* Coming-soon pill for a downloaded model without inference yet. */}
+            {(() => {
+              const spec = imageModelSpecs.find((s) => s.id === selectedImageModelId)
+              if (spec?.downloaded && spec.inference_status === 'coming_soon') {
+                return (
+                  <span className="flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/15 text-amber-300 text-[11px] font-medium ring-1 ring-amber-500/30">
+                    Coming soon
+                  </span>
+                )
+              }
+              return null
+            })()}
+
+            {imageSettingsMessage && (
+              <span className="text-[10px] text-zinc-500 max-w-[180px] truncate" title={imageSettingsMessage}>
+                {imageSettingsMessage}
+              </span>
+            )}
+
             {/* Resolution dropdown */}
             <SettingsDropdown
               title="IMAGE RESOLUTION"
@@ -711,6 +1195,28 @@ function PromptBar({
           </>
         ) : (
           <>
+            {/* Standard (style) LoRA: show its scale alongside the normal
+                video model/duration/resolution controls — the adapter stacks
+                on top of a regular fast-video generation. */}
+            {selectedLora?.variant === 'standard' && (
+              <>
+                <SettingsDropdown
+                  title="LORA SCALE"
+                  value={String(loraScale)}
+                  onChange={(v) => onLoraScaleChange(parseFloat(v))}
+                  options={LORA_STRENGTH_OPTIONS}
+                  tooltip="LoRA scale — how strongly the LoRA adapter weights influence the base model. Lower = subtler, higher = stronger stylization."
+                  trigger={
+                    <>
+                      <span className="text-zinc-500 text-[10px]">SCALE</span>
+                      <span className="text-zinc-300 font-medium">{loraScale.toFixed(2)}</span>
+                      <ChevronUp className="h-3 w-3 text-zinc-500" />
+                    </>
+                  }
+                />
+                <div className="w-px h-4 bg-zinc-700 mx-0.5" />
+              </>
+            )}
             {resolvedVideoOptions && resolvedVideoOptions.hasCompatibleOptions ? (
               <>
                 <SettingsDropdown
@@ -900,7 +1406,9 @@ export function GenSpace() {
     setPendingRetakeUpdate,
     genSpaceIcLoraSource,
     setGenSpaceIcLoraSource,
-    setPendingIcLoraUpdate,
+    genSpaceLoraSource,
+    setGenSpaceLoraSource,
+    currentTab,
   } = useProjects()
   const currentProjectId = activeProject?.id ?? null
   const { shouldVideoGenerateWithLtxApi, forceApiGenerations, settings: appSettings } = useAppSettings()
@@ -909,13 +1417,145 @@ export function GenSpace() {
     isLoading: isLoadingVideoGenerationModelSpecs,
     errorMessage: videoGenerationModelSpecsErrorMessage,
   } = useVideoGenerationModelSpecs()
-  const [mode, setMode] = useState<'image' | 'video' | 'retake' | 'ic-lora'>('video')
+  const {
+    modelSpecs: imageGenerationModelSpecsResponse,
+    refresh: refreshImageModelSpecs,
+  } = useImageGenerationModelSpecs()
+  const imageModelSpecs: ImageModelSpec[] = imageGenerationModelSpecsResponse?.models ?? []
+  const [imageModelId, setImageModelId] = useState<string>('z-image-turbo')
+  const selectedImageSpec = imageModelSpecs.find((s) => s.id === imageModelId) ?? null
+  // Generate is gated when the selected image model isn't downloaded yet, or
+  // its inference isn't wired (coming-soon). Surfaced as a message under the
+  // picker and via canSubmit so the button is disabled with an honest reason.
+  const imageSettingsMessage: string | null = (() => {
+    if (!selectedImageSpec) return null
+    if (!selectedImageSpec.downloaded) {
+      return `Download ${selectedImageSpec.display_name} from the model picker to generate.`
+    }
+    if (selectedImageSpec.inference_status === 'coming_soon') {
+      return `${selectedImageSpec.display_name} is downloaded, but inference is coming soon.`
+    }
+    return null
+  })()
+  const canGenerateImage = Boolean(selectedImageSpec?.downloaded && selectedImageSpec.inference_status === 'available')
+  const [mode, setMode] = useState<'image' | 'video' | 'retake'>('video')
   const [prompt, setPrompt] = useState('')
+  const promptComposerRef = useRef<HTMLTextAreaElement>(null)
   const [inputImage, setInputImage] = useState<string | null>(null)
   const [inputAudio, setInputAudio] = useState<string | null>(null)
   const [localError, setLocalError] = useState<GenerationError | null>(null)
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null)
+  const [sendToLoraAsset, setSendToLoraAsset] = useState<{ path: string; prompt?: string } | null>(null)
   const [copiedPrompt, setCopiedPrompt] = useState(false)
+  // Result viewer mode for IC-LoRA outputs: "result" (default), "before-after"
+  // (reference | output side by side), or "control" (union control video).
+  const [resultViewMode, setResultViewMode] = useState<'result' | 'before-after' | 'control'>('result')
+
+  // IC-LoRA result extras (before/after + control views). Populated by the
+  // queue asset router for union_control / video_input_ic_lora outputs.
+  const referenceVideoPath = selectedAsset?.generationParams?.referenceVideoPath
+  const controlVideoPath = selectedAsset?.generationParams?.controlVideoPath
+  const hasIcLoraViews = !!(referenceVideoPath || controlVideoPath)
+  // Union-control LoRAs extract a control signal (canny/depth/pose) from the
+  // driving video. When one is present, the before/after view becomes a
+  // three-column driving | control | output comparison instead of the usual
+  // two-column reference | output.
+  const isUnionControl = selectedAsset?.generationParams?.loraVariant === 'union_control'
+  const showControlInBa = isUnionControl && !!controlVideoPath
+
+  useEffect(() => {
+    setResultViewMode('result')
+  }, [selectedAsset?.id])
+
+  // Unified before/after playback: a single play/pause + scrubber drives both
+  // videos in sync. The output video is the timeline source of truth; the
+  // reference is seeked to match (clamped to its own duration).
+  const baLeftRef = useRef<HTMLVideoElement>(null)
+  const baRightRef = useRef<HTMLVideoElement>(null)
+  // Union-control before/after adds a third, middle column: the control
+  // signal (canny/depth/pose) extracted from the driving video. It plays in
+  // sync with the reference + output, so it needs its own ref driven by the
+  // same play/seek handlers.
+  const baControlRef = useRef<HTMLVideoElement>(null)
+  const [baPlaying, setBaPlaying] = useState(false)
+  const [baTime, setBaTime] = useState(0)
+  const [baDuration, setBaDuration] = useState(0)
+  const [baExporting, setBaExporting] = useState(false)
+  const comparisonViewerRef = useRef<HTMLDivElement>(null)
+  const [baFullscreen, setBaFullscreen] = useState(false)
+  const [baFullscreenError, setBaFullscreenError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setBaFullscreen(document.fullscreenElement === comparisonViewerRef.current)
+      setBaFullscreenError(null)
+    }
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  }, [])
+
+  const toggleBaFullscreen = useCallback(async () => {
+    setBaFullscreenError(null)
+    const result = await toggleElementFullscreen(comparisonViewerRef.current)
+    if (result === 'unavailable') {
+      setBaFullscreenError('Fullscreen is not available in this window.')
+    } else if (result === 'failed') {
+      logger.warn('Before/after fullscreen request failed')
+      setBaFullscreenError('Could not enter fullscreen. Playback is still available.')
+    }
+  }, [])
+
+  const toggleBaPlay = useCallback(() => {
+    const right = baRightRef.current
+    const left = baLeftRef.current
+    const control = baControlRef.current
+    if (!right) return
+    if (right.paused) {
+      void right.play()
+      void left?.play()
+      void control?.play()
+    } else {
+      right.pause()
+      left?.pause()
+      control?.pause()
+    }
+  }, [])
+
+  const seekBa = useCallback((t: number) => {
+    const right = baRightRef.current
+    const left = baLeftRef.current
+    const control = baControlRef.current
+    if (!right) return
+    right.currentTime = t
+    if (left) left.currentTime = Math.min(t, left.duration || t)
+    if (control) control.currentTime = Math.min(t, control.duration || t)
+    setBaTime(t)
+  }, [])
+
+  const handleDownloadSideBySide = useCallback(async () => {
+    if (!referenceVideoPath || !selectedAsset || baExporting) return
+    const dest = await window.electronAPI.showSaveDialog({
+      title: 'Save side-by-side export',
+      defaultPath: `before-after-${selectedAsset.id}.mp4`,
+      filters: [{ name: 'MP4 Video', extensions: ['mp4'] }],
+    })
+    if (!dest) return
+    setBaExporting(true)
+    try {
+      const result = await window.electronAPI.exportSideBySide({
+        leftPath: referenceVideoPath,
+        rightPath: selectedAsset.path,
+        outputPath: dest,
+      })
+      if (!result.success) {
+        logger.error(`Side-by-side export failed: ${result.error}`)
+      }
+    } catch (err) {
+      logger.error(`Side-by-side export failed: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setBaExporting(false)
+    }
+  }, [referenceVideoPath, selectedAsset, baExporting])
   const [showFavorites, setShowFavorites] = useState(false)
   const [gallerySize, setGallerySize] = useState<GallerySize>('medium')
   const [showSizeMenu, setShowSizeMenu] = useState(false)
@@ -928,14 +1568,6 @@ export function GenSpace() {
       startTime: number
       duration: number
       videoDuration: number
-    }
-  } | null>(null)
-  const icLoraSubmissionRef = useRef<{
-    prompt: string
-    input: {
-      videoPath: string
-      conditioningType: ICLoraConditioningType
-      conditioningStrength: number
     }
   } | null>(null)
   const [settings, setSettings] = useState(() => ({ ...DEFAULT_VIDEO_SETTINGS }))
@@ -958,8 +1590,6 @@ export function GenSpace() {
   )
   
   const {
-    generate,
-    generateImage,
     isGenerating,
     progress,
     statusMessage,
@@ -968,6 +1598,14 @@ export function GenSpace() {
     error,
     reset,
   } = useGeneration()
+
+  // Durable generation queue: the main Generate button enqueues video/image
+  // work instead of blocking on the synchronous single-flight path, so the
+  // user can line up generations and keep working. Retake / IC-LoRA keep
+  // their own synchronous flows; the queue runner cooperates with them via
+  // the shared single-flight slot. Completed queue items are routed into
+  // the project by the global QueueAssetRouter.
+  const { enqueue } = useQueue()
 
   const {
     submitRetake,
@@ -991,31 +1629,57 @@ export function GenSpace() {
     duration?: number
   }>({ videoPath: null, duration: undefined })
   const [activeRetakeSource, setActiveRetakeSource] = useState<GenSpaceRetakeSource | null>(null)
-  const [activeIcLoraSource, setActiveIcLoraSource] = useState<{
+
+  // ----- In-app LoRA inference (Gen Space "Apply LoRA") -----
+  // The registry is the picker source (official union IC-LoRA + user-trained
+  // adapters). One fetch shared with the PromptBar pill and the asset-card
+  // action. Selection drives a `kind: 'lora'` queue payload instead of the
+  // old synchronous IC-LoRA flow.
+  const loraRegistry = useLoraInferenceRegistry()
+  const [selectedLora, setSelectedLora] = useState<LoraInferenceEntry | null>(null)
+  const [loraScale, setLoraScale] = useState(1.0)
+  const [loraCondType, setLoraCondType] = useState<LoraInferenceConditioningType>('canny')
+  const [loraCondStrength, setLoraCondStrength] = useState(1.0)
+  const [loraRefVideo, setLoraRefVideo] = useState<string | null>(null)
+  const [loraDuration, setLoraDuration] = useState(5)
+  const [loraResolution, setLoraResolution] = useState<'540p' | '720p' | '1080p'>('540p')
+  const [loraPreserveAudio, setLoraPreserveAudio] = useState(false)
+  const [loraRefine, setLoraRefine] = useState(false)
+  const [loraPickerOpen, setLoraPickerOpen] = useState(false)
+  const [autoPromptLoading, setAutoPromptLoading] = useState(false)
+  // Union-control IC-LoRAs need preprocessing models on disk (the union
+  // adapter + MiDaS depth, and for pose the DW processor + YOLOX person
+  // detector). Gate generation until they're downloaded — mirrors the old
+  // ICLoraPanel download flow, now driven from the PromptBar LoRA pill.
+  const unionGateActive = !forceApiGenerations
+    && mode === 'video'
+    && selectedLora?.variant === 'union_control'
+  const icLoraModelGate = useIcLoraModelGate(unionGateActive)
+  // When the editor bridges a clip in ("Apply LoRA" from a timeline clip), we
+  // remember the source so the result can land as a take on the source asset
+  // once the queue item completes. (Take-replacement routing for `kind: 'lora'
+  // ` queue items is a follow-up; the value is retained here for that wiring.)
+  const [, setActiveLoraSource] = useState<{
     assetId?: string
     linkedClipIds?: string[]
   } | null>(null)
-  const [icLoraInput, setIcLoraInput] = useState({
-    videoPath: null as string | null,
-    conditioningType: 'canny' as ICLoraConditioningType,
-    conditioningStrength: 1.0,
-    ready: false,
-  })
-  const [icLoraPanelKey, setIcLoraPanelKey] = useState(0)
-  const [icLoraCondType, setIcLoraCondType] = useState<ICLoraConditioningType>('canny')
-  const [icLoraStrength, setIcLoraStrength] = useState(1.0)
-  const [icLoraInitial, setIcLoraInitial] = useState<{
-    videoPath: string | null
-  }>({ videoPath: null })
 
-  const {
-    submitIcLora,
-    resetIcLora,
-    isIcLoraGenerating,
-    icLoraStatus,
-    icLoraError,
-    icLoraResult,
-  } = useIcLora()
+  const clearLora = useCallback(() => {
+    setSelectedLora(null)
+    setLoraRefVideo(null)
+    setLoraPickerOpen(false)
+    setActiveLoraSource(null)
+  }, [])
+
+  const selectLora = useCallback((entry: LoraInferenceEntry) => {
+    setSelectedLora(entry)
+    setLoraPickerOpen(false)
+    // Coerce the conditioning type to one the entry actually supports (the
+    // official union IC-LoRA advertises canny/depth/pose; user adapters vary).
+    if (entry.variant === 'union_control' && !entry.conditioningTypes.includes(loraCondType)) {
+      setLoraCondType(entry.conditioningTypes[0] ?? 'canny')
+    }
+  }, [loraCondType])
   
   // Handle incoming frame from the Video Editor for editing
   useEffect(() => {
@@ -1051,30 +1715,73 @@ export function GenSpace() {
     setGenSpaceRetakeSource(null)
   }, [genSpaceRetakeSource, setGenSpaceRetakeSource])
 
+  // Bridge from the Video Editor ("Apply LoRA" on a timeline clip): drop the
+  // clip into the reference-video slot, switch to video mode, and preselect
+  // the official union IC-LoRA if it's already in the registry. The result
+  // lands as a fresh asset via the queue; automatic take-replacement of the
+  // source clip is a follow-up (the queue router doesn't carry linkedClipIds).
   useEffect(() => {
     if (!genSpaceIcLoraSource) return
     if (forceApiGenerations) {
       setGenSpaceIcLoraSource(null)
       return
     }
-    setMode('ic-lora')
+    setMode('video')
     setPrompt('')
-    setActiveIcLoraSource({
+    setLoraRefVideo(genSpaceIcLoraSource.videoPath)
+    setActiveLoraSource({
       assetId: genSpaceIcLoraSource.assetId,
       linkedClipIds: genSpaceIcLoraSource.linkedClipIds,
     })
-    setIcLoraInitial({
-      videoPath: genSpaceIcLoraSource.videoPath,
-    })
-    setIcLoraPanelKey((prev) => prev + 1)
-    setGenSpaceIcLoraSource(null)
-  }, [genSpaceIcLoraSource, forceApiGenerations, setGenSpaceIcLoraSource])
-
-  useEffect(() => {
-    if (forceApiGenerations && mode === 'ic-lora') {
-      setMode('video')
+    const unionEntry = loraRegistry.entries.find(
+      (e) => e.kind === 'official_union' && e.variant === 'union_control' && e.available,
+    )
+    if (unionEntry) {
+      selectLora(unionEntry)
+    } else {
+      // Registry not loaded yet (or no official LoRA) — surface the picker so
+      // the user can choose an adapter for the dropped clip.
+      setLoraPickerOpen(true)
     }
-  }, [forceApiGenerations, mode])
+    setGenSpaceIcLoraSource(null)
+  }, [genSpaceIcLoraSource, forceApiGenerations, setGenSpaceIcLoraSource, loraRegistry.entries, selectLora])
+
+  // LoRAs are local-only (standard) or run on the local IC-LoRA pipeline; the
+  // API generation path can't apply them, so drop the selection when forced.
+  useEffect(() => {
+    if (forceApiGenerations && selectedLora) {
+      clearLora()
+    }
+  }, [forceApiGenerations, selectedLora, clearLora])
+
+  // GenSpace stays mounted while hidden (see Project.tsx), so the registry's
+  // mount-time fetch only runs once — before a training job that completes on
+  // the LoRA Trainer tab has written its adapter. Refetch whenever the user
+  // lands on Gen Space so a freshly trained LoRA appears in the picker (and the
+  // "Try in Gen Space" bridge below can resolve it) without an app restart.
+  useEffect(() => {
+    if (currentTab !== 'gen-space') return
+    void loraRegistry.refresh()
+  }, [currentTab, loraRegistry.refresh])
+
+  // Bridge from the LoRA trainer RunView ("Try in Gen Space"): preselect the
+  // adapter by its registry id. The registry may still be loading when the
+  // bridge fires, so we depend on `loraRegistry.entries` and resolve once it
+  // arrives. Clearing the source prevents re-selection on later reloads.
+  useEffect(() => {
+    if (!genSpaceLoraSource) return
+    if (forceApiGenerations) {
+      setGenSpaceLoraSource(null)
+      return
+    }
+    const entry = loraRegistry.entries.find((e) => e.id === genSpaceLoraSource.loraId)
+    if (entry) {
+      setMode('video')
+      setPrompt('')
+      selectLora(entry)
+      setGenSpaceLoraSource(null)
+    }
+  }, [genSpaceLoraSource, forceApiGenerations, setGenSpaceLoraSource, loraRegistry.entries, selectLora])
 
   useEffect(() => {
     if (mode !== 'video' || videoModelSpecs.length === 0) return
@@ -1089,12 +1796,6 @@ export function GenSpace() {
       setLocalError(createLocalGenerationError(retakeError))
     }
   }, [retakeError])
-
-  useEffect(() => {
-    if (icLoraError) {
-      setLocalError(createLocalGenerationError(icLoraError))
-    }
-  }, [icLoraError])
 
   // Only show assets that were generated (have generationParams), not imported files
   const assets = (activeProject?.assets || []).filter(a => a.generationParams)
@@ -1241,81 +1942,6 @@ export function GenSpace() {
     })()
   }, [retakeResult, isRetaking, currentProjectId, activeProject?.assets, activeRetakeSource, addAsset, addTakeToAsset, setPendingRetakeUpdate, resetRetake])
 
-  useEffect(() => {
-    if (!icLoraResult || !currentProjectId || isIcLoraGenerating) return
-    const submission = icLoraSubmissionRef.current
-    if (!submission) return
-    icLoraSubmissionRef.current = null
-
-    ;(async () => {
-      const copied = await addVisualAssetToProject(icLoraResult.videoPath, currentProjectId, 'video')
-      if (!copied) {
-        logger.error('Could not persist IC-LoRA result to project storage')
-        setLocalError(createLocalGenerationError('Failed to save IC-LoRA output to project storage.'))
-        setActiveIcLoraSource(null)
-        resetIcLora()
-        return
-      }
-
-      if (activeIcLoraSource?.assetId) {
-        const sourceAsset = activeProject?.assets?.find(a => a.id === activeIcLoraSource.assetId)
-        if (sourceAsset) {
-          const newTakeIndex = sourceAsset.takes ? sourceAsset.takes.length : 1
-          addTakeToAsset(currentProjectId, sourceAsset.id, {
-            path: copied.path,
-            bigThumbnailPath: copied.bigThumbnailPath,
-            smallThumbnailPath: copied.smallThumbnailPath,
-            width: copied.width,
-            height: copied.height,
-            createdAt: Date.now(),
-          })
-          if (activeIcLoraSource.linkedClipIds?.length) {
-            setPendingIcLoraUpdate({
-              assetId: sourceAsset.id,
-              clipIds: activeIcLoraSource.linkedClipIds,
-              newTakeIndex,
-            })
-          }
-        }
-      } else {
-        addAsset(currentProjectId, {
-          type: 'video',
-          path: copied.path,
-          bigThumbnailPath: copied.bigThumbnailPath,
-          smallThumbnailPath: copied.smallThumbnailPath,
-          width: copied.width,
-          height: copied.height,
-          prompt: submission.prompt,
-          resolution: '',
-          generationParams: {
-            mode: 'ic-lora',
-            prompt: submission.prompt,
-            model: 'fast',
-            duration: 0,
-            resolution: '',
-            fps: 24,
-            audio: false,
-            cameraMotion: 'none',
-            icLoraVideoPath: submission.input.videoPath,
-            icLoraConditioningType: submission.input.conditioningType,
-            icLoraConditioningStrength: submission.input.conditioningStrength,
-          },
-          takes: [{
-            path: copied.path,
-            bigThumbnailPath: copied.bigThumbnailPath,
-            smallThumbnailPath: copied.smallThumbnailPath,
-            width: copied.width,
-            height: copied.height,
-            createdAt: Date.now(),
-          }],
-          activeTakeIndex: 0,
-        })
-      }
-
-      setActiveIcLoraSource(null)
-    })()
-  }, [icLoraResult, isIcLoraGenerating, currentProjectId, activeProject?.assets, activeIcLoraSource, addAsset, addTakeToAsset, setPendingIcLoraUpdate])
-  
   // When image generation/editing completes, add all images to project assets
   useEffect(() => {
     if (imagePaths.length > 0 && currentProjectId && !isGenerating) {
@@ -1367,26 +1993,22 @@ export function GenSpace() {
     }
   }, [imagePaths, currentProjectId, isGenerating])
   
-  const handleGenerate = async () => {
-    if (mode === 'ic-lora') {
-      if (!prompt.trim() || !icLoraInput.videoPath || !icLoraInput.ready) return
-      icLoraSubmissionRef.current = {
-        prompt,
-        input: {
-          videoPath: icLoraInput.videoPath,
-          conditioningType: icLoraCondType,
-          conditioningStrength: icLoraStrength,
-        },
-      }
-      await submitIcLora({
-        videoPath: icLoraInput.videoPath,
-        conditioningType: icLoraCondType,
-        conditioningStrength: icLoraStrength,
-        prompt,
+  const enqueueFromGenSpace = useCallback(
+    async (payload: QueuePayload): Promise<boolean> => {
+      const result = await enqueue(payload, {
+        originatingProjectId: currentProjectId ?? undefined,
+        source: 'genspace',
       })
-      return
-    }
+      if (!result.ok) {
+        setLocalError(createLocalGenerationError(result.error))
+        return false
+      }
+      return true
+    },
+    [currentProjectId, enqueue],
+  )
 
+  const handleGenerate = async () => {
     if (mode === 'retake') {
       if (!retakeInput.videoPath || retakeInput.duration < 2) return
       retakeSubmissionRef.current = {
@@ -1414,9 +2036,15 @@ export function GenSpace() {
     setLastPrompt(prompt)
 
     if (mode === 'image') {
-      generateImage(
-        prompt,
-        {
+      // FLUX.2 [klein] 9B editing model: enqueue through the durable queue
+      // (kind 'image_edit') with the optional reference image, so the edit
+      // shows in the queue panel and doesn't grey out / block the UI while
+      // it runs. The queue runner cooperates with the single-flight GPU slot
+      // and routes the result into the project via the queue asset router,
+      // just like z-image and video generations. Other image models use the
+      // 'image' payload kind below.
+      if (selectedImageSpec?.is_edit_model) {
+        const dims = getImageDimensions({
           model: 'fast' as 'fast' | 'pro',
           duration: 5,
           videoResolution: settings.videoResolution,
@@ -1427,30 +2055,146 @@ export function GenSpace() {
           imageAspectRatio: settings.aspectRatio,
           imageSteps: 4,
           variations: settings.variations,
-        }
+        })
+        const numImages = settings.variations || 1
+        const editRequest = {
+          prompt,
+          width: dims.width,
+          height: dims.height,
+          numSteps: 4,
+          numImages,
+          referenceImages: inputImage ? [inputImage] : [],
+        } as unknown as ApiRequestBodyOf<'generateImageEdit'>
+        await enqueueFromGenSpace(
+          { kind: 'image_edit', request: editRequest } as QueuePayload,
+        )
+        return
+      }
+
+      const dims = getImageDimensions({
+        model: 'fast' as 'fast' | 'pro',
+        duration: 5,
+        videoResolution: settings.videoResolution,
+        fps: 24,
+        audio: false,
+        cameraMotion: 'none',
+        imageResolution: settings.imageResolution,
+        imageAspectRatio: settings.aspectRatio,
+        imageSteps: 4,
+        variations: settings.variations,
+      })
+      const numImages = settings.variations || 1
+      const imageRequest = {
+        prompt,
+        model: imageModelId,
+        width: dims.width,
+        height: dims.height,
+        numSteps: 4,
+        numImages,
+      } as unknown as ApiRequestBodyOf<'generateImage'>
+      await enqueueFromGenSpace(
+        { kind: 'image', request: imageRequest } as QueuePayload,
       )
     } else {
-      // Generate video (t2v if no image/audio, i2v if image, a2v if audio)
+      // Generate video (t2v if no image/audio, i2v if image, a2v if audio).
+      // Enqueue so the user can line up multiple generations; the queue
+      // panel shows progress and the asset router copies results into the
+      // project as they complete.
       const imagePath = inputImage || null
       const audioPath = inputAudio || null
       const videoSettings = sanitizeVideoSettings(settings)
-
-      generate(
+      const body: Record<string, unknown> = {
         prompt,
-        imagePath,
-        {
-          model: videoSettings.model as 'fast' | 'pro',
-          duration: videoSettings.duration,
-          videoResolution: videoSettings.videoResolution,
-          fps: videoSettings.fps,
-          audio: videoSettings.audio || false,
-          cameraMotion: 'none',
-          aspectRatio: videoSettings.aspectRatio,
-          imageResolution: videoSettings.imageResolution,
-          imageAspectRatio: videoSettings.aspectRatio,
-          imageSteps: 4,
-        },
-        audioPath,
+        model: videoSettings.model,
+        duration: videoSettings.duration,
+        resolution: videoSettings.videoResolution,
+        fps: videoSettings.fps,
+        audio: videoSettings.audio || false,
+        cameraMotion: 'none',
+        negativePrompt: (settings as { negativePrompt?: string }).negativePrompt ?? '',
+        aspectRatio: videoSettings.aspectRatio || '16:9',
+      }
+      if (imagePath) body.imagePath = imagePath
+      if (audioPath) body.audioPath = audioPath
+      const videoRequest = body as unknown as ApiRequestBodyOf<'generateVideo'>
+
+      // When a LoRA is selected, dispatch a `kind: 'lora'` payload instead of
+      // a plain video request. The backend LoraInferenceHandler routes by
+      // variant: standard stacks the adapter on a fast-video gen; union_control
+      // runs the IC-LoRA control pipeline against the reference video; and
+      // video_input_ic_lora feeds the raw reference video straight into a
+      // user-trained IC-LoRA. LoRAs are local-only, so this branch is never
+      // reached when API generations are forced (the selection is cleared).
+      if (selectedLora && !forceApiGenerations) {
+        if (selectedLora.variant === 'standard') {
+          const payload = {
+            kind: 'lora' as const,
+            request: {
+              variant: 'standard' as const,
+              loraId: selectedLora.id,
+              loraScale: loraScale,
+              request: videoRequest,
+            },
+          } as unknown as QueuePayload
+          await enqueueFromGenSpace(payload)
+          return
+        }
+        if (!loraRefVideo) {
+          setLocalError(
+            createLocalGenerationError(
+              'Attach a reference video before generating with this LoRA.',
+            ),
+          )
+          return
+        }
+        if (selectedLora.variant === 'union_control') {
+          const payload = {
+            kind: 'lora' as const,
+            request: {
+              variant: 'union_control' as const,
+              loraId: selectedLora.id,
+              request: {
+                video_path: loraRefVideo,
+                conditioning_type: loraCondType,
+                prompt,
+                conditioning_strength: loraCondStrength,
+                num_inference_steps: 30,
+                cfg_guidance_scale: 1,
+                negative_prompt: '',
+                images: [],
+                duration: loraDuration,
+                preserve_audio: loraPreserveAudio,
+                refine: loraRefine,
+                resolution: loraResolution,
+              },
+            },
+          } as unknown as QueuePayload
+          await enqueueFromGenSpace(payload)
+          return
+        }
+        // video_input_ic_lora
+        const payload = {
+          kind: 'lora' as const,
+          request: {
+            variant: 'video_input_ic_lora' as const,
+            loraId: selectedLora.id,
+            loraScale: loraScale,
+            conditioningStrength: loraCondStrength,
+            prompt,
+            videoPath: loraRefVideo,
+            negativePrompt: '',
+            duration: loraDuration,
+            preserveAudio: loraPreserveAudio,
+            refine: loraRefine,
+            resolution: loraResolution,
+          },
+        } as unknown as QueuePayload
+        await enqueueFromGenSpace(payload)
+        return
+      }
+
+      await enqueueFromGenSpace(
+        { kind: 'video', request: videoRequest } as QueuePayload,
       )
     }
   }
@@ -1473,6 +2217,18 @@ export function GenSpace() {
     setPrompt(`${imageAsset.prompt || 'The scene comes to life...'}`)
   }
 
+  const handleEditImage = (imageAsset: Asset) => {
+    startGalleryImageEdit({
+      assetPath: imageAsset.path,
+      imageModelSpecs,
+      setMode,
+      setImageModelId,
+      setInputImage,
+      setPrompt,
+      promptComposer: promptComposerRef.current,
+    })
+  }
+
   const handleRetake = (videoAsset: Asset) => {
     setMode('retake')
     setPrompt('')
@@ -1484,17 +2240,26 @@ export function GenSpace() {
     setRetakePanelKey((prev) => prev + 1)
   }
 
-  const handleIcLora = (videoAsset: Asset) => {
+  // Asset-card "Apply LoRA": drop the clip into the reference-video slot and
+  // surface the LoRA picker so the user can pick an adapter (union control or
+  // video-input IC-LoRA). Standard (style) LoRAs don't need a reference video,
+  // so the picker still lets them pick one — it just won't use the slot.
+  const handleApplyLora = (videoAsset: Asset) => {
     if (forceApiGenerations) return
-    setMode('ic-lora')
+    setMode('video')
     setPrompt('')
-    setActiveIcLoraSource(null)
-    setIcLoraInitial({ videoPath: videoAsset.path })
-    setIcLoraPanelKey((prev) => prev + 1)
+    setLoraRefVideo(videoAsset.path)
+    setActiveLoraSource(null)
+    setLoraPickerOpen(true)
+  }
+
+  const handleSendToLora = (videoAsset: Asset) => {
+    setSendToLoraAsset({ path: videoAsset.path, prompt: videoAsset.prompt })
   }
 
   const isRetakeMode = mode === 'retake'
-  const isIcLoraMode = mode === 'ic-lora'
+  const loraNeedsRefVideo = selectedLora !== null
+    && (selectedLora.variant === 'union_control' || selectedLora.variant === 'video_input_ic_lora')
   const hasCompatibleVideoSettings = mode !== 'video' || (
     !isLoadingVideoGenerationModelSpecs
     && videoModelSpecs.length > 0
@@ -1504,19 +2269,48 @@ export function GenSpace() {
       hasAudio: Boolean(inputAudio),
     }).hasCompatibleOptions
   )
+  // A ref-video LoRA needs a reference clip before it can generate; a standard
+  // LoRA stacks on a normal video gen so it only needs compatible video settings.
+  // A union_control LoRA additionally needs its preprocessing models on disk
+  // (depth / pose processors) — the download gate blocks generation until then.
+  const loraReady = !loraNeedsRefVideo || !!loraRefVideo
+  const unionModelsReady = selectedLora?.variant !== 'union_control' || icLoraModelGate.ready
   const canSubmit = isRetakeMode
     ? retakeInput.ready && !!retakeInput.videoPath && !isRetaking
-    : isIcLoraMode
-      ? !!prompt.trim() && icLoraInput.ready && !!icLoraInput.videoPath && !isIcLoraGenerating
-      : !!prompt.trim() && hasCompatibleVideoSettings
-  const promptButtonLabel = isRetakeMode ? 'Retake' : isIcLoraMode ? 'Generate' : 'Generate'
+    : mode === 'image'
+      ? !!prompt.trim() && canGenerateImage
+      : !!prompt.trim()
+        && (selectedLora ? (loraReady && unionModelsReady) : hasCompatibleVideoSettings)
+  const promptButtonLabel = isRetakeMode ? 'Retake' : 'Generate'
   const promptButtonIcon = isRetakeMode
     ? <Scissors className="h-3.5 w-3.5" />
-    : isIcLoraMode
-      ? <Sparkles className="h-3.5 w-3.5" />
     : <Sparkles className={`h-3.5 w-3.5 ${isGenerating ? 'animate-pulse' : ''}`} />
-  const promptGenerating = isRetakeMode ? isRetaking : isIcLoraMode ? isIcLoraGenerating : isGenerating
-  
+  const promptGenerating = isRetakeMode ? isRetaking : isGenerating
+
+  // Auto-prompt assistant: available only for IC-LoRA variants that carry a
+  // per-LoRA system prompt, when a reference video is attached and a Gemini
+  // API key is configured. The one-shot handler fills the prompt box so the
+  // user can review/edit before generating.
+  const autoPromptAvailable =
+    !!selectedLora
+    && selectedLora.promptTemplate != null
+    && !!loraRefVideo
+    && appSettings.hasGeminiApiKey
+    && !autoPromptLoading
+  const handleAutoPrompt = useCallback(async () => {
+    if (!selectedLora || !loraRefVideo) return
+    setAutoPromptLoading(true)
+    const result = await ApiClient.autoPrompt({ loraId: selectedLora.id, videoPath: loraRefVideo })
+    setAutoPromptLoading(false)
+    if (!result.ok) {
+      const message = (result.error as { message?: string })?.message ?? 'Auto-prompt failed'
+      logger.warn(`Auto-prompt failed (${message})`)
+      return
+    }
+    const text = result.data.prompt.trim()
+    if (text) setPrompt(text)
+  }, [selectedLora, loraRefVideo])
+
   // Close size menu on click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -1553,7 +2347,7 @@ export function GenSpace() {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') { e.preventDefault(); goToPrev() }
       else if (e.key === 'ArrowRight') { e.preventDefault(); goToNext() }
-      else if (e.key === 'Escape') setSelectedAsset(null)
+      else if (e.key === 'Escape' && !document.fullscreenElement) setSelectedAsset(null)
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
@@ -1660,16 +2454,16 @@ export function GenSpace() {
                 <div className="relative rounded-xl overflow-hidden bg-zinc-800 aspect-video">
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
                     <div className="relative w-16 h-16 mb-3">
-                      <div className="absolute inset-0 rounded-full border-2 border-violet-500/30" />
-                      <div className="absolute inset-0 rounded-full border-2 border-violet-500 border-t-transparent animate-spin" />
+                      <div className="absolute inset-0 rounded-full border-2 border-blue-500/30" />
+                      <div className="absolute inset-0 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
                       <div className="absolute inset-2 rounded-full bg-zinc-800 flex items-center justify-center">
-                        <Sparkles className="h-6 w-6 text-violet-400" />
+                        <Sparkles className="h-6 w-6 text-blue-400" />
                       </div>
                     </div>
                     <p className="text-sm text-zinc-400">{statusMessage || 'Generating...'}</p>
                     {progress > 0 && (
                       <div className="w-32 h-1 bg-zinc-800 rounded-full mt-2 overflow-hidden">
-                        <div className="h-full bg-violet-500 transition-all" style={{ width: `${progress}%` }} />
+                        <div className="h-full bg-blue-500 transition-all" style={{ width: `${progress}%` }} />
                       </div>
                     )}
                   </div>
@@ -1682,9 +2476,11 @@ export function GenSpace() {
                   onDelete={() => handleDelete(asset.id)}
                   onPlay={() => setSelectedAsset(asset)}
                   onDragStart={handleDragStart}
+                  onEditImage={handleEditImage}
                   onCreateVideo={handleCreateVideo}
                   onRetake={handleRetake}
-                  onIcLora={!forceApiGenerations ? handleIcLora : undefined}
+                  onApplyLora={!forceApiGenerations ? handleApplyLora : undefined}
+                  onSendToLora={handleSendToLora}
                   onToggleFavorite={() => currentProjectId && toggleFavorite(currentProjectId, asset.id)}
                 />
               ))}
@@ -1707,24 +2503,6 @@ export function GenSpace() {
         </div>
       )}
 
-      {mode === 'ic-lora' && !forceApiGenerations && (
-        <div className="absolute inset-x-0 top-0 bottom-[160px] px-4 pt-4 pb-4 flex flex-col overflow-hidden">
-          <ICLoraPanel
-            initialVideoPath={icLoraInitial.videoPath}
-            resetKey={icLoraPanelKey}
-            fillHeight
-            isProcessing={isIcLoraGenerating}
-            processingStatus={icLoraStatus}
-            conditioningType={icLoraCondType}
-            onConditioningTypeChange={setIcLoraCondType}
-            conditioningStrength={icLoraStrength}
-            onConditioningStrengthChange={setIcLoraStrength}
-            outputVideoPath={icLoraResult?.videoPath || null}
-            onChange={setIcLoraInput}
-          />
-        </div>
-      )}
-
       {/* Floating prompt panel — wider, responsive, centered */}
       <div className="absolute bottom-5 left-1/2 w-[min(700px,calc(100%-2rem))] -translate-x-1/2">
 
@@ -1734,11 +2512,22 @@ export function GenSpace() {
           isGenerating={isGenerating}
         />
 
+        {/* IC-LoRA model download gate — shown while a union_control LoRA is
+            selected but its preprocessing models (depth / pose processors) aren't
+            fully on disk yet. Covers the pose path that needs the DW processor +
+            YOLOX person detector in addition to the union adapter. */}
+        {unionGateActive && (icLoraModelGate.checking || !icLoraModelGate.ready) && (
+          <ModelDownloadGate
+            title="Download Required: IC-LoRA Resources"
+            description="Pose / depth conditioning needs extra preprocessing models. Download them to use this LoRA."
+            gate={icLoraModelGate}
+          />
+        )}
+
         {/* Prompt bar */}
         <PromptBar
           mode={mode}
           onModeChange={setMode}
-          canUseIcLora={!forceApiGenerations}
           prompt={prompt}
           onPromptChange={setPrompt}
           onGenerate={handleGenerate}
@@ -1754,13 +2543,58 @@ export function GenSpace() {
           onSettingsChange={(nextSettings) => setSettings(sanitizeVideoSettings(nextSettings))}
           videoModelSpecs={videoModelSpecs}
           videoSettingsMessage={videoSettingsMessage}
-          icLoraCondType={icLoraCondType}
-          onIcLoraCondTypeChange={setIcLoraCondType}
-          icLoraStrength={icLoraStrength}
-          onIcLoraStrengthChange={setIcLoraStrength}
+          imageModelSpecs={imageModelSpecs}
+          selectedImageModelId={imageModelId}
+          onSelectImageModel={setImageModelId}
+          onRefreshImageModelSpecs={refreshImageModelSpecs}
+          imageSettingsMessage={imageSettingsMessage}
+          imageEditModelSelected={selectedImageSpec?.is_edit_model ?? false}
+          selectedLora={selectedLora}
+          forceApiGenerations={forceApiGenerations}
+          loraScale={loraScale}
+          onLoraScaleChange={setLoraScale}
+          loraCondType={loraCondType}
+          onLoraCondTypeChange={setLoraCondType}
+          loraCondStrength={loraCondStrength}
+          onLoraCondStrengthChange={setLoraCondStrength}
+          loraRefVideo={loraRefVideo}
+          onLoraRefVideoChange={setLoraRefVideo}
+          loraDuration={loraDuration}
+          onLoraDurationChange={setLoraDuration}
+          loraResolution={loraResolution}
+          onLoraResolutionChange={setLoraResolution}
+          loraRefine={loraRefine}
+          onLoraRefineChange={setLoraRefine}
+          preserveAudio={loraPreserveAudio}
+          onPreserveAudioChange={setLoraPreserveAudio}
+          onAutoPrompt={handleAutoPrompt}
+          autoPromptLoading={autoPromptLoading}
+          autoPromptAvailable={autoPromptAvailable}
+          autoPromptHasKey={appSettings.hasGeminiApiKey}
+          loraPickerOpen={loraPickerOpen}
+          onToggleLoraPicker={() => setLoraPickerOpen((v) => !v)}
+          onClearLora={clearLora}
+          onSelectLora={selectLora}
+          onDeletedLora={(deletedId) => {
+            if (selectedLora?.id === deletedId) clearLora()
+          }}
+          loraEntries={loraRegistry.entries}
+          loraLoading={loraRegistry.loading}
+          loraError={loraRegistry.error}
+          onRefreshLora={() => void loraRegistry.refresh()}
+          promptTextareaRef={promptComposerRef}
         />
       </div>
       
+      {sendToLoraAsset && (
+        <SendToLoraModal
+          videoPath={sendToLoraAsset.path}
+          suggestedCaption={sendToLoraAsset.prompt}
+          originatingProjectId={currentProjectId}
+          onClose={() => setSendToLoraAsset(null)}
+        />
+      )}
+
       {/* Asset preview modal */}
       {selectedAsset && (
         <div 
@@ -1808,7 +2642,141 @@ export function GenSpace() {
               </button>
             </div>
 
-            {selectedAsset.type === 'video' ? (
+            {hasIcLoraViews && (
+              <div className="flex items-center justify-center gap-1 mb-3">
+                {([
+                  ['result', 'Result'],
+                  referenceVideoPath ? ['before-after', 'Before / After'] : null,
+                  controlVideoPath ? ['control', 'Control'] : null,
+                ].filter(Boolean) as ['result' | 'before-after' | 'control', string][]).map(([mode, label]) => (
+                  <button
+                    key={mode}
+                    onClick={() => setResultViewMode(mode)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                      resultViewMode === mode
+                        ? 'bg-white text-black'
+                        : 'bg-white/10 text-zinc-300 hover:bg-white/20'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {resultViewMode === 'before-after' && referenceVideoPath ? (
+              <div
+                ref={comparisonViewerRef}
+                className={`flex flex-col ${baFullscreen ? 'h-screen w-screen bg-black p-4' : ''}`}
+              >
+                <div className={`grid ${showControlInBa ? 'grid-cols-3' : 'grid-cols-2'} gap-3 ${baFullscreen ? 'flex-1 min-h-0' : 'max-h-[68vh]'}`}>
+                  <div className="relative flex min-h-0 flex-col items-center">
+                    <video
+                      ref={baLeftRef}
+                      src={pathToFileUrl(referenceVideoPath)}
+                      onClick={toggleBaPlay}
+                      className={`w-full min-h-0 rounded-xl object-contain bg-black cursor-pointer ${baFullscreen ? 'flex-1 h-full max-h-full' : 'max-h-[64vh]'}`}
+                    />
+                    <span className="text-xs text-zinc-500 mt-1.5">{showControlInBa ? 'Driving video' : 'Reference'}</span>
+                    {!baPlaying && (
+                      <button
+                        onClick={toggleBaPlay}
+                        className="absolute inset-0 flex items-center justify-center"
+                        aria-label="Play both"
+                      >
+                        <span className="p-3 rounded-full bg-black/60 text-white">
+                          <Play className="h-6 w-6" />
+                        </span>
+                      </button>
+                    )}
+                  </div>
+                  {showControlInBa && controlVideoPath && (
+                    <div className="relative flex min-h-0 flex-col items-center">
+                      <video
+                        ref={baControlRef}
+                        src={pathToFileUrl(controlVideoPath)}
+                        onClick={toggleBaPlay}
+                        className={`w-full min-h-0 rounded-xl object-contain bg-black cursor-pointer ${baFullscreen ? 'flex-1 h-full max-h-full' : 'max-h-[64vh]'}`}
+                      />
+                      <span className="text-xs text-zinc-500 mt-1.5">
+                        Control — {selectedAsset.generationParams?.icLoraConditioningType ?? 'conditioning'}
+                      </span>
+                    </div>
+                  )}
+                  <div className="relative flex min-h-0 flex-col items-center">
+                    <video
+                      ref={baRightRef}
+                      key={selectedAsset.id}
+                      src={pathToFileUrl(selectedAsset.path)}
+                      onClick={toggleBaPlay}
+                      onPlay={() => setBaPlaying(true)}
+                      onPause={() => setBaPlaying(false)}
+                      onTimeUpdate={(e) => setBaTime(e.currentTarget.currentTime)}
+                      onLoadedMetadata={(e) => setBaDuration(e.currentTarget.duration)}
+                      className={`w-full min-h-0 rounded-xl object-contain bg-black cursor-pointer ${baFullscreen ? 'flex-1 h-full max-h-full' : 'max-h-[64vh]'}`}
+                    />
+                    <span className="text-xs text-zinc-500 mt-1.5">Output</span>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-3 px-1">
+                  <button
+                    onClick={toggleBaPlay}
+                    className="p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+                    aria-label={baPlaying ? 'Pause' : 'Play'}
+                  >
+                    {baPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                  </button>
+                  <input
+                    type="range"
+                    min={0}
+                    max={baDuration || 0}
+                    step={0.05}
+                    value={Math.min(baTime, baDuration || 0)}
+                    onChange={(e) => seekBa(parseFloat(e.target.value))}
+                    className="flex-1 accent-white"
+                  />
+                  <span className="text-xs text-zinc-400 tabular-nums whitespace-nowrap">
+                    {formatTime(Math.min(baTime, baDuration || 0))} / {formatTime(baDuration || 0)}
+                  </span>
+                  <button
+                    onClick={handleDownloadSideBySide}
+                    disabled={baExporting}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white/10 text-zinc-200 hover:bg-white/20 text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Export a single side-by-side MP4 (reference | output)"
+                  >
+                    {baExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                    {baExporting ? 'Exporting…' : 'Export side-by-side'}
+                  </button>
+                  <button
+                    onClick={() => void toggleBaFullscreen()}
+                    className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-3 py-1.5 text-xs font-medium text-zinc-200 transition-colors hover:bg-white/20"
+                    aria-label={baFullscreen ? 'Exit comparison fullscreen' : 'Enter comparison fullscreen'}
+                    title={baFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+                  >
+                    {baFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+                    <span className="hidden sm:inline">{baFullscreen ? 'Exit fullscreen' : 'Fullscreen'}</span>
+                  </button>
+                </div>
+                {baFullscreenError && (
+                  <p className="mt-2 text-center text-xs text-amber-300" role="status">
+                    {baFullscreenError}
+                  </p>
+                )}
+              </div>
+            ) : resultViewMode === 'control' && controlVideoPath ? (
+              <div className="flex flex-col items-center">
+                <video
+                  src={pathToFileUrl(controlVideoPath)}
+                  controls
+                  autoPlay
+                  loop
+                  className="w-full rounded-xl object-contain max-h-[75vh] bg-black"
+                />
+                <span className="text-xs text-zinc-500 mt-1.5">
+                  Control signal — {selectedAsset.generationParams?.icLoraConditioningType ?? 'conditioning'}
+                </span>
+              </div>
+            ) : selectedAsset.type === 'video' ? (
               <video
                 key={selectedAsset.id}
                 src={pathToFileUrl(selectedAsset.path)}
@@ -1857,7 +2825,6 @@ export function GenSpace() {
             if (localError) {
               setLocalError(null)
               resetRetake()
-              resetIcLora()
             }
           }}
         />

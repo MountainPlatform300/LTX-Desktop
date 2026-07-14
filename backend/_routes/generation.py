@@ -46,8 +46,15 @@ def route_generate_model_specs(
 
 @router.post("/generate/cancel", response_model=CancelResponse)
 def route_generate_cancel(handler: AppHandler = Depends(get_state_service)) -> CancelResponse:
-    """POST /api/generate/cancel."""
-    return handler.generation.cancel_generation()
+    """POST /api/generate/cancel.
+
+    Cancels the active generation and any running queue item. Routing
+    through `AppHandler.cancel_generation` (rather than the generation
+    handler directly) ensures a stuck queued generation's ledger entry
+    is marked cancelled even when the inference call never returns to
+    the runner, so a restart doesn't re-run it.
+    """
+    return handler.cancel_generation()
 
 
 @router.get("/generation/progress", response_model=GenerationProgressResponse)

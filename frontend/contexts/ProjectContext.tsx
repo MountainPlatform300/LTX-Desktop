@@ -46,6 +46,8 @@ interface ProjectContextType {
   setGenSpaceIcLoraSource: (source: GenSpaceIcLoraSource | null) => void
   pendingIcLoraUpdate: PendingIcLoraUpdate | null
   setPendingIcLoraUpdate: (update: PendingIcLoraUpdate | null) => void
+  genSpaceLoraSource: GenSpaceLoraSource | null
+  setGenSpaceLoraSource: (source: GenSpaceLoraSource | null) => void
 }
 
 export interface GenSpaceRetakeSource {
@@ -75,6 +77,13 @@ export interface PendingIcLoraUpdate {
   newTakeIndex: number
 }
 
+// Bridge from the LoRA trainer RunView ("Try in Gen Space" on a completed
+// job) into Gen Space: carries the registry entry id of the adapter to
+// preselect. The id mirrors the backend registry's `user-<trainingJobId>` id.
+export interface GenSpaceLoraSource {
+  loraId: string
+}
+
 const ProjectContext = createContext<ProjectContextType | null>(null)
 
 function loadInitialProjectIds(): string[] {
@@ -94,6 +103,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const [pendingRetakeUpdate, setPendingRetakeUpdate] = useState<PendingRetakeUpdate | null>(null)
   const [genSpaceIcLoraSource, setGenSpaceIcLoraSource] = useState<GenSpaceIcLoraSource | null>(null)
   const [pendingIcLoraUpdate, setPendingIcLoraUpdate] = useState<PendingIcLoraUpdate | null>(null)
+  const [genSpaceLoraSource, setGenSpaceLoraSource] = useState<GenSpaceLoraSource | null>(null)
 
   const bumpProjectRevision = useCallback(() => {
     setProjectRevision(prev => prev + 1)
@@ -333,6 +343,8 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       setGenSpaceIcLoraSource,
       pendingIcLoraUpdate,
       setPendingIcLoraUpdate,
+      genSpaceLoraSource,
+      setGenSpaceLoraSource,
     }}>
       {children}
     </ProjectContext.Provider>

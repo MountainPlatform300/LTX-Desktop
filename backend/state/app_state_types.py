@@ -14,6 +14,7 @@ if TYPE_CHECKING:
         A2VPipeline,
         DepthProcessorPipeline,
         FastVideoPipeline,
+        ImageEditPipeline,
         ImageGenerationPipeline,
         IcLoraPipeline,
         PoseProcessorPipeline,
@@ -102,6 +103,11 @@ class TextEncoderState:
 class VideoPipelineState:
     pipeline: FastVideoPipeline
     is_compiled: bool
+    # The adapter the pipeline was built with (None = base model). Part of the
+    # GpuSlot cache key so switching standard LoRAs swaps the pipeline rather
+    # than silently reusing the base model.
+    lora_path: str | None = None
+    lora_scale: float = 1.0
 
 
 @dataclass
@@ -117,8 +123,13 @@ class ICLoraState:
     lora_path: str
     depth_pipeline: DepthProcessorPipeline
     depth_model_path: str
+    lora_scale: float = 1.0
     pose_resources: PoseResources | None = None
     conditioning_cache: ConditioningCache = field(default_factory=ConditioningCache)
+    # Base checkpoint the pipeline was built on (distilled, or dev when the
+    # opt-in quality base is active). Part of the cache key so toggling the
+    # setting evicts and reloads with the new base.
+    base_checkpoint_path: str = ""
 
 
 @dataclass
@@ -131,6 +142,11 @@ class RetakePipelineState:
     pipeline: RetakePipeline
     distilled: bool
     quantized: bool
+
+
+@dataclass
+class KleinPipelineState:
+    pipeline: ImageEditPipeline
 
 
 # ============================================================
@@ -192,7 +208,14 @@ ActiveGeneration = GpuGeneration | ApiGeneration
 
 @dataclass
 class GpuSlot:
-    active_pipeline: VideoPipelineState | ICLoraState | A2VPipelineState | RetakePipelineState | ImageGenerationPipeline
+    active_pipeline: (
+        VideoPipelineState
+        | ICLoraState
+        | A2VPipelineState
+        | RetakePipelineState
+        | KleinPipelineState
+        | ImageGenerationPipeline
+    )
 
 
 @dataclass

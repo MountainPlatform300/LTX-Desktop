@@ -118,8 +118,30 @@ class GpuInfoImpl:
 
         return None
 
+    def _vram_total_gb_via_nvml(self) -> int | None:
+        """VRAM via NVML (the dedicated GPU query). Returns None if NVML is
+        unavailable — callers fall back to torch CUDA properties. NVML tends
+        to be more reliable than ``torch.cuda.get_device_properties`` on some
+        driver/runtime combinations, so trying it first avoids mistaking a
+        real GPU for "unsupported" when only the torch probe fails.
+        """
+        try:
+            import pynvml  # type: ignore[reportMissingModuleSource]
+
+            pynvml.nvmlInit()
+            handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+            memory = pynvml.nvmlDeviceGetMemoryInfo(handle)
+            pynvml.nvmlShutdown()
+            return int(memory.total // (1024**3))
+        except Exception:
+            return None
+
     def get_vram_total_gb(self) -> int | None:
         if self.get_cuda_available():
+            # Try NVML first (dedicated, reliable), then torch CUDA properties.
+            via_nvml = self._vram_total_gb_via_nvml()
+            if via_nvml is not None:
+                return via_nvml
             try:
                 properties = cast(
                     _CudaDeviceProperties,

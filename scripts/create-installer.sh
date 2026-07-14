@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # create-installer.sh
-# Runs electron-builder to produce the installer (dmg/exe).
-# This is the ONLY build stage that needs code-signing secrets.
+# Runs electron-builder to produce the platform installer.
+# Release beta.2 is unsigned; a later signed release will supply signing here.
 #
 # Expects the frontend to be built and python-embed to be ready.
 # See local-build.sh for the convenience wrapper that runs all stages.
@@ -10,7 +10,7 @@
 #   bash scripts/create-installer.sh [options]
 #
 # Options:
-#   --platform mac|win   Target platform (auto-detected if omitted)
+#   --platform mac|linux|win   Target platform (auto-detected if omitted)
 #   --publish <mode>     Publish mode for electron-builder (always|never|onTag)
 #   --unpack             Build unpacked app only (faster, no installer/dmg)
 
@@ -21,7 +21,7 @@ set -euo pipefail
 # ============================================================
 UNPACK=false
 PLATFORM=""
-PUBLISH=""
+PUBLISH="never"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -36,7 +36,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     *)
       echo "Unknown option: $1"
-      echo "Usage: $0 [--platform mac|win] [--publish always|never|onTag] [--unpack]"
+      echo "Usage: $0 [--platform mac|linux|win] [--publish always|never|onTag] [--unpack]"
       exit 1
       ;;
   esac
@@ -49,7 +49,7 @@ if [ -z "$PLATFORM" ]; then
     Darwin)          PLATFORM="mac" ;;
     MINGW*|MSYS*|CYGWIN*) PLATFORM="win" ;;
     Linux)           PLATFORM="linux" ;;
-    *)               echo "ERROR: Could not detect platform. Use --platform mac|win"; exit 1 ;;
+    *)               echo "ERROR: Could not detect platform. Use --platform mac|linux|win"; exit 1 ;;
   esac
 fi
 
@@ -67,8 +67,16 @@ if [ ! -d "dist" ] || [ ! -d "dist-electron" ]; then
   exit 1
 fi
 
-if [ "$PLATFORM" != "linux" ] && [ ! -d "python-embed" ]; then
+if [ "$PLATFORM" = "mac" ] && [ ! -d "python-embed" ]; then
   echo "ERROR: Python environment not found. Run local-build.sh or prepare-python.sh first."
+  exit 1
+fi
+if [ ! -f "python-deps-hash.txt" ]; then
+  echo "ERROR: Python dependency hash not found. Run local-build.sh first."
+  exit 1
+fi
+if [ "$UNPACK" = false ] && [ "$PLATFORM" != "mac" ] && [ ! -f "python-runtime-manifest.json" ]; then
+  echo "ERROR: Verified Python runtime manifest not found. Run 'pnpm python:package' first."
   exit 1
 fi
 

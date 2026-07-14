@@ -6,6 +6,15 @@ export interface AppState {
   analyticsEnabled?: boolean
   installationId?: string
   projectAssetsPath?: string
+  // Persisted state of the local-training (WSL2) setup wizard, so it can resume
+  // after the reboot that `wsl --install` requires. See electron/wsl-setup.ts.
+  wslSetup?: {
+    stage: string
+    distro: string
+    startedAt?: string
+    updatedAt?: string
+    error?: string | null
+  }
   [key: string]: unknown
 }
 

@@ -1,15 +1,17 @@
 import { execFile } from 'child_process'
+import { createHash } from 'crypto'
 import { app } from 'electron'
 import fs from 'fs'
 import http from 'http'
 import https from 'https'
 import { load as loadYaml } from 'js-yaml'
 import path from 'path'
+import { validatePythonArchiveEntries, validatePythonArchiveTypes } from './archive-validation'
 import { isDev } from './config'
 import { logger } from './logger'
 
 export interface PythonSetupProgress {
-  status: 'downloading' | 'extracting' | 'complete' | 'error'
+  status: 'downloading' | 'extracting' | 'installing-extras' | 'complete' | 'error'
   percent: number
   downloadedBytes: number
   totalBytes: number
@@ -17,8 +19,13 @@ export interface PythonSetupProgress {
 }
 
 interface ArchiveManifest {
-  parts: { name: string; size: number }[]
+  schemaVersion: 1
+  platform: string
+  arch: string
+  depsHash: string
+  parts: { name: string; size: number; sha256: string }[]
   totalSize: number
+  archiveSha256: string
 }
 
 // ── GitHub private repo authentication ────────────────────────────────
@@ -28,7 +35,8 @@ interface ArchiveManifest {
 
 let _authHeaders: Record<string, string> | null = null
 
-function getAuthHeaders(): Record<string, string> {
+function getAuthHeaders(url: URL): Record<string, string> {
+  if (url.hostname !== 'github.com') return {}
   if (_authHeaders !== null) return _authHeaders
 
   _authHeaders = {}
@@ -60,8 +68,19 @@ function getBundledHashPath(): string {
   return path.join(process.resourcesPath, 'python-deps-hash.txt')
 }
 
+function getBundledManifestPath(): string {
+  if (isDev) {
+    return path.join(process.cwd(), 'python-runtime-manifest.json')
+  }
+  return path.join(process.resourcesPath, 'python-runtime-manifest.json')
+}
+
 function getInstalledHashPath(): string {
   return path.join(app.getPath('userData'), 'python', 'deps-hash.txt')
+}
+
+function getInstalledArchiveHashPath(): string {
+  return path.join(app.getPath('userData'), 'python', 'archive-sha256.txt')
 }
 
 /** Directory where python-embed lives at runtime. */
@@ -76,10 +95,7 @@ export function getPythonDir(): string {
   return path.join(process.resourcesPath, 'python')
 }
 
-/**
- * Check whether the Python environment is ready to use.
- * Also promotes a staged python-next/ directory if it matches the expected hash.
- */
+/** Check whether the installed Python environment matches the signed app. */
 export function isPythonReady(): { ready: boolean } {
   if (process.platform === 'darwin') {
     return { ready: true }
@@ -90,142 +106,18 @@ export function isPythonReady(): { ready: boolean } {
   }
 
   const bundledHash = readHash(getBundledHashPath())
-
-  // Check if a pre-downloaded python-next/ is waiting to be promoted
-  const nextDir = path.join(app.getPath('userData'), 'python-next')
-  const nextHash = readHash(path.join(nextDir, 'deps-hash.txt'))
-  if (bundledHash && nextHash && bundledHash === nextHash) {
-    logger.info( '[python-setup] Promoting staged python-next/ to python/')
-    try {
-      const destDir = path.join(app.getPath('userData'), 'python')
-      if (fs.existsSync(destDir)) {
-        fs.rmSync(destDir, { recursive: true, force: true })
-      }
-      fs.renameSync(nextDir, destDir)
-      return { ready: true }
-    } catch (err) {
-      logger.error( `[python-setup] Failed to promote staged python: ${err}`)
-      // Fall through to normal check
-    }
-  }
-
   const installedHash = readHash(getInstalledHashPath())
-
-  if (!bundledHash) {
-    const pythonExe = path.join(getPythonDir(), process.platform === 'win32' ? 'python.exe' : 'bin/python3')
-    return { ready: fs.existsSync(pythonExe) }
-  }
-
-  return { ready: bundledHash === installedHash }
-}
-
-/**
- * Pre-download python-embed for an upcoming app update (Windows only).
- * Downloads to userData/python-next/ so the next launch can promote it instantly.
- * Returns true if a download was performed, false if not needed.
- */
-export async function preDownloadPythonForUpdate(
-  newVersion: string,
-  onProgress?: (progress: PythonSetupProgress) => void
-): Promise<boolean> {
-  if (process.platform === 'darwin') {
-    return false
-  }
-
-  const baseUrl = (isDev && process.env.LTX_PYTHON_URL?.replace(/^["']+|["']+$/g, ''))
-    || `https://github.com/Lightricks/ltx-desktop/releases/download/v${newVersion}`
-
-  // Fetch the new version's deps hash
-  let newHash: string | null = null
-  if (isLocalPath(baseUrl)) {
-    // Local testing: read hash from the directory or the archive's extracted deps-hash.txt
-    const hashFile = baseUrl.endsWith('.tar.gz')
-      ? null // Can't read hash from a single tar.gz without extracting
-      : path.join(baseUrl, 'deps-hash.txt')
-    newHash = hashFile ? readHash(hashFile) : null
-  } else {
-    const hashUrl = `${baseUrl}/python-deps-hash.txt`
-    const hashDest = path.join(app.getPath('userData'), 'python-next-hash-check.txt')
-    try {
-      await downloadFileRaw(hashUrl, hashDest)
-      newHash = readHash(hashDest)
-    } catch (err) {
-      logger.warn( `[python-setup] Could not fetch new version deps hash: ${err}`)
-    } finally {
-      try { fs.unlinkSync(hashDest) } catch { /* ignore */ }
-    }
-  }
-
-  if (!newHash) {
-    logger.info( '[python-setup] No deps hash available for new version, skipping pre-download')
-    return false
-  }
-
-  // Compare with currently installed hash
-  const installedHash = readHash(getInstalledHashPath())
-  if (newHash === installedHash) {
-    logger.info( '[python-setup] Python deps unchanged in new version, no pre-download needed')
-    return false
-  }
-
-  logger.info( `[python-setup] Python deps changed (${installedHash} → ${newHash}), pre-downloading`)
-
-  // Download to python-next/
-  const nextDir = path.join(app.getPath('userData'), 'python-next')
-  const tempDir = path.join(app.getPath('userData'), 'python-next-tmp')
-  const archivePath = path.join(app.getPath('userData'), 'python-next.tar.gz')
-
+  const installedArchiveHash = readHash(getInstalledArchiveHashPath())
+  if (!bundledHash) return { ready: false }
   try {
-    if (fs.existsSync(nextDir)) fs.rmSync(nextDir, { recursive: true, force: true })
-    if (fs.existsSync(tempDir)) fs.rmSync(tempDir, { recursive: true, force: true })
-  } catch { /* ignore */ }
-
-  fs.mkdirSync(tempDir, { recursive: true })
-
-  const cleanupFiles: string[] = []
-  const noop = () => {}
-  const progressCb = onProgress || noop
-
-  try {
-    try {
-      await acquireArchive(baseUrl, archivePath, cleanupFiles, progressCb)
-    } catch (primaryErr) {
-      const prefix = getPythonArchivePrefix()
-      const fallbackUrl = newHash ? `${FALLBACK_CDN_BASE}/${prefix}/${newHash}/${prefix}.tar.gz` : null
-      if (!fallbackUrl || isLocalPath(baseUrl)) {
-        throw primaryErr
-      }
-      logger.warn( `[python-setup] Pre-download primary failed: ${primaryErr}`)
-      logger.info( `[python-setup] Falling back to CDN: ${fallbackUrl}`)
-      try { fs.unlinkSync(archivePath) } catch { /* ignore */ }
-      for (const f of cleanupFiles) { try { fs.unlinkSync(f) } catch { /* ignore */ } }
-      cleanupFiles.length = 0
-      await acquireArchive(fallbackUrl, archivePath, cleanupFiles, progressCb)
+    const manifest = parseArchiveManifest(getBundledManifestPath(), bundledHash)
+    return {
+      ready: bundledHash === installedHash
+        && manifest.archiveSha256 === installedArchiveHash,
     }
-
-    await extractTarGz(archivePath, tempDir)
-
-    const extractedInner = path.join(tempDir, 'python-embed')
-    const extractedSource = fs.existsSync(extractedInner) ? extractedInner : tempDir
-
-    if (fs.existsSync(nextDir)) fs.rmSync(nextDir, { recursive: true, force: true })
-    fs.renameSync(extractedSource, nextDir)
-
-    // Write the new hash into python-next/ so isPythonReady can verify it on next launch
-    fs.writeFileSync(path.join(nextDir, 'deps-hash.txt'), newHash)
-
-    logger.info( '[python-setup] Pre-download complete, staged at python-next/')
-    return true
-  } catch (err) {
-    logger.error( `[python-setup] Pre-download failed: ${err}`)
-    try { fs.rmSync(nextDir, { recursive: true, force: true }) } catch { /* ignore */ }
-    return false
-  } finally {
-    try { fs.unlinkSync(archivePath) } catch { /* ignore */ }
-    for (const f of cleanupFiles) {
-      try { fs.unlinkSync(f) } catch { /* ignore */ }
-    }
-    try { if (fs.existsSync(tempDir)) fs.rmSync(tempDir, { recursive: true, force: true }) } catch { /* ignore */ }
+  } catch (error) {
+    logger.error(`[python-setup] Invalid bundled runtime manifest: ${error}`)
+    return { ready: false }
   }
 }
 
@@ -238,10 +130,7 @@ function readHash(filePath: string): string | null {
 }
 
 // ── Archive source resolution ─────────────────────────────────────────
-// Primary: GitHub Releases (multi-part, version-based)
-// Fallback: public CDN bucket (single file, deps-hash-based)
-
-const FALLBACK_CDN_BASE = 'https://storage.googleapis.com/ltx-desktop-artifacts'
+// Production artifacts are hosted only on this fork's GitHub release.
 
 function getPythonArchivePrefix(): string {
   if (process.platform === 'win32') return 'python-embed-win32'
@@ -260,14 +149,7 @@ function getArchiveBase(): string {
     return process.env.LTX_PYTHON_URL.replace(/^["']+|["']+$/g, '')
   }
   const version = app.getVersion()
-  return `https://github.com/Lightricks/ltx-desktop/releases/download/v${version}`
-}
-
-function getFallbackArchiveUrl(): string | null {
-  const hash = readHash(getBundledHashPath())
-  if (!hash) return null
-  const prefix = getPythonArchivePrefix()
-  return `${FALLBACK_CDN_BASE}/${prefix}/${hash}/${prefix}.tar.gz`
+  return `https://github.com/MountainPlatform300/LTX-Desktop/releases/download/v${version}`
 }
 
 function isLocalPath(source: string): boolean {
@@ -282,15 +164,16 @@ async function acquireArchive(
   base: string,
   archivePath: string,
   cleanupFiles: string[],
-  onProgress: (progress: PythonSetupProgress) => void
+  onProgress: (progress: PythonSetupProgress) => void,
+  expectedManifest?: ArchiveManifest,
 ): Promise<void> {
   if (isLocalPath(base) && base.endsWith('.tar.gz')) {
     await copyFileWithProgress(base, archivePath, 0, fs.statSync(base).size, onProgress)
   } else if (isLocalPath(base)) {
-    await acquirePartsLocal(base, archivePath, cleanupFiles, onProgress)
+    await acquirePartsLocal(base, archivePath, cleanupFiles, onProgress, expectedManifest)
   } else if (base.includes('/releases/download/')) {
     // GitHub Releases — multi-part
-    await acquirePartsRemote(base, archivePath, cleanupFiles, onProgress)
+    await acquirePartsRemote(base, archivePath, cleanupFiles, onProgress, expectedManifest)
   } else {
     // CDN or other URL — single file (content-length discovered from response)
     let lastTime = Date.now()
@@ -319,7 +202,7 @@ async function acquireArchive(
 
 /**
  * Download (or copy) python-embed archive and extract to userData/python/.
- * Tries GitHub Releases first, falls back to CDN if available.
+ * Downloads from the matching fork GitHub release.
  */
 export async function downloadPythonEmbed(
   onProgress: (progress: PythonSetupProgress) => void
@@ -342,27 +225,11 @@ export async function downloadPythonEmbed(
     const base = getArchiveBase()
     logger.info( `[python-setup] Archive base: ${base}`)
 
-    try {
-      await acquireArchive(base, archivePath, cleanupFiles, onProgress)
-    } catch (primaryErr) {
-      // Primary source failed — try CDN fallback
-      const fallbackUrl = getFallbackArchiveUrl()
-      if (!fallbackUrl || isLocalPath(base)) {
-        throw primaryErr
-      }
-
-      logger.warn( `[python-setup] Primary download failed: ${primaryErr}`)
-      logger.info( `[python-setup] Falling back to CDN: ${fallbackUrl}`)
-
-      // Clean up any partial primary download
-      try { fs.unlinkSync(archivePath) } catch { /* ignore */ }
-      for (const f of cleanupFiles) {
-        try { fs.unlinkSync(f) } catch { /* ignore */ }
-      }
-      cleanupFiles.length = 0
-
-      await acquireArchive(fallbackUrl, archivePath, cleanupFiles, onProgress)
-    }
+    const expectedManifest = parseArchiveManifest(
+      getBundledManifestPath(),
+      readHash(getBundledHashPath()) ?? undefined,
+    )
+    await acquireArchive(base, archivePath, cleanupFiles, onProgress, expectedManifest)
 
     // Extract
     onProgress({ status: 'extracting', percent: 100, downloadedBytes: 0, totalBytes: 0, speed: 0 })
@@ -378,11 +245,16 @@ export async function downloadPythonEmbed(
     }
     fs.renameSync(extractedSource, destDir)
 
-    // Write deps hash so subsequent launches skip download
+    // Record both dependency and archive identities only after verified extraction.
     const bundledHash = getBundledHashPath()
     if (fs.existsSync(bundledHash)) {
       fs.copyFileSync(bundledHash, path.join(destDir, 'deps-hash.txt'))
     }
+    fs.writeFileSync(
+      path.join(destDir, 'archive-sha256.txt'),
+      `${expectedManifest.archiveSha256}\n`,
+      'utf-8',
+    )
 
     onProgress({ status: 'complete', percent: 100, downloadedBytes: 0, totalBytes: 0, speed: 0 })
     logger.info( '[python-setup] Python environment ready')
@@ -401,14 +273,90 @@ export async function downloadPythonEmbed(
 
 // ── Multi-part: local directory ──────────────────────────────────────
 
+function parseArchiveManifest(
+  manifestPath: string,
+  expectedDepsHash?: string,
+): ArchiveManifest {
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as ArchiveManifest
+  const prefix = getPythonArchivePrefix()
+  if (
+    manifest.schemaVersion !== 1
+    || manifest.platform !== process.platform
+    || manifest.arch !== process.arch
+    || !/^[a-f0-9]{64}$/.test(manifest.depsHash)
+    || !/^[a-f0-9]{64}$/.test(manifest.archiveSha256)
+    || !Number.isSafeInteger(manifest.totalSize)
+    || manifest.totalSize <= 0
+    || !Array.isArray(manifest.parts)
+    || manifest.parts.length === 0
+  ) {
+    throw new Error('Invalid Python archive manifest')
+  }
+  if (expectedDepsHash && manifest.depsHash !== expectedDepsHash) {
+    throw new Error('Python archive dependency hash does not match this app version')
+  }
+  for (const [index, part] of manifest.parts.entries()) {
+    const expectedName = `${prefix}.part${String(index + 1).padStart(3, '0')}`
+    if (
+      part.name !== expectedName
+      || !Number.isSafeInteger(part.size)
+      || part.size <= 0
+      || !/^[a-f0-9]{64}$/.test(part.sha256)
+    ) {
+      throw new Error('Invalid Python archive part metadata')
+    }
+  }
+  if (manifest.parts.reduce((sum, part) => sum + part.size, 0) !== manifest.totalSize) {
+    throw new Error('Python archive manifest size mismatch')
+  }
+  return manifest
+}
+
+function assertExpectedManifest(
+  manifest: ArchiveManifest,
+  expectedManifest?: ArchiveManifest,
+): void {
+  if (!expectedManifest) return
+  if (JSON.stringify(manifest) !== JSON.stringify(expectedManifest)) {
+    throw new Error('Python archive manifest does not match the signed application')
+  }
+}
+
+function sha256File(filePath: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const hash = createHash('sha256')
+    const input = fs.createReadStream(filePath)
+    input.on('data', (chunk: Buffer) => hash.update(chunk))
+    input.on('error', reject)
+    input.on('end', () => resolve(hash.digest('hex')))
+  })
+}
+
+async function verifyArchiveFile(
+  filePath: string,
+  expectedSize: number,
+  expectedHash: string,
+): Promise<void> {
+  const actualSize = fs.statSync(filePath).size
+  if (actualSize !== expectedSize) {
+    throw new Error(`Python archive part has size ${actualSize}; expected ${expectedSize}`)
+  }
+  const actualHash = await sha256File(filePath)
+  if (actualHash !== expectedHash) {
+    throw new Error('Python archive integrity verification failed')
+  }
+}
+
 async function acquirePartsLocal(
   dirPath: string,
   archivePath: string,
   cleanupFiles: string[],
-  onProgress: (progress: PythonSetupProgress) => void
+  onProgress: (progress: PythonSetupProgress) => void,
+  expectedManifest?: ArchiveManifest,
 ): Promise<void> {
   const manifestPath = path.join(dirPath, `${getPythonArchivePrefix()}.manifest.json`)
-  const manifest: ArchiveManifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'))
+  const manifest = parseArchiveManifest(manifestPath, expectedManifest?.depsHash)
+  assertExpectedManifest(manifest, expectedManifest)
 
   const partPaths: string[] = []
   let bytesSoFar = 0
@@ -420,10 +368,12 @@ async function acquirePartsLocal(
     cleanupFiles.push(dest)
 
     await copyFileWithProgress(src, dest, bytesSoFar, manifest.totalSize, onProgress)
+    await verifyArchiveFile(dest, part.size, part.sha256)
     bytesSoFar += part.size
   }
 
   await concatenateParts(partPaths, archivePath)
+  await verifyArchiveFile(archivePath, manifest.totalSize, manifest.archiveSha256)
 }
 
 // ── Multi-part: remote download ──────────────────────────────────────
@@ -432,7 +382,8 @@ async function acquirePartsRemote(
   baseUrl: string,
   archivePath: string,
   cleanupFiles: string[],
-  onProgress: (progress: PythonSetupProgress) => void
+  onProgress: (progress: PythonSetupProgress) => void,
+  expectedManifest?: ArchiveManifest,
 ): Promise<void> {
   // Fetch manifest
   const prefix = getPythonArchivePrefix()
@@ -440,7 +391,8 @@ async function acquirePartsRemote(
   const manifestDest = path.join(app.getPath('userData'), `${prefix}.manifest.json`)
   cleanupFiles.push(manifestDest)
   await downloadFileRaw(manifestUrl, manifestDest)
-  const manifest: ArchiveManifest = JSON.parse(fs.readFileSync(manifestDest, 'utf-8'))
+  const manifest = parseArchiveManifest(manifestDest, expectedManifest?.depsHash)
+  assertExpectedManifest(manifest, expectedManifest)
 
   const partPaths: string[] = []
   let bytesSoFar = 0
@@ -479,10 +431,12 @@ async function acquirePartsRemote(
       }
     )
 
+    await verifyArchiveFile(partDest, part.size, part.sha256)
     bytesSoFar += part.size
   }
 
   await concatenateParts(partPaths, archivePath)
+  await verifyArchiveFile(archivePath, manifest.totalSize, manifest.archiveSha256)
 }
 
 // ── File operations ──────────────────────────────────────────────────
@@ -550,6 +504,22 @@ function copyFileWithProgress(
 }
 
 /** Download a file without progress (used for manifest). */
+function validateDownloadUrl(rawUrl: string): URL {
+  const url = new URL(rawUrl)
+  if (isDev) {
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+      throw new Error(`Unsupported download protocol: ${url.protocol}`)
+    }
+    return url
+  }
+  const trustedHost = url.hostname === 'github.com'
+    || url.hostname.endsWith('.githubusercontent.com')
+  if (url.protocol !== 'https:' || !trustedHost) {
+    throw new Error(`Untrusted Python artifact URL: ${url.origin}`)
+  }
+  return url
+}
+
 function downloadFileRaw(url: string, dest: string, redirectCount = 0): Promise<void> {
   return new Promise((resolve, reject) => {
     if (redirectCount > 5) {
@@ -557,11 +527,19 @@ function downloadFileRaw(url: string, dest: string, redirectCount = 0): Promise<
       return
     }
 
-    const client = url.startsWith('https') ? https : http
-    const req = client.get(url, { headers: getAuthHeaders() }, (res) => {
+    let validatedUrl: URL
+    try {
+      validatedUrl = validateDownloadUrl(url)
+    } catch (error) {
+      reject(error)
+      return
+    }
+    const client = validatedUrl.protocol === 'https:' ? https : http
+    const req = client.get(validatedUrl, { headers: getAuthHeaders(validatedUrl) }, (res) => {
       if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
         res.resume()
-        downloadFileRaw(res.headers.location, dest, redirectCount + 1).then(resolve).catch(reject)
+        const redirectUrl = new URL(res.headers.location, validatedUrl).toString()
+        downloadFileRaw(redirectUrl, dest, redirectCount + 1).then(resolve).catch(reject)
         return
       }
       if (!res.statusCode || res.statusCode >= 400) {
@@ -595,11 +573,19 @@ function downloadFileWithGlobalProgress(
       return
     }
 
-    const client = url.startsWith('https') ? https : http
-    const req = client.get(url, { headers: getAuthHeaders() }, (res) => {
+    let validatedUrl: URL
+    try {
+      validatedUrl = validateDownloadUrl(url)
+    } catch (error) {
+      reject(error)
+      return
+    }
+    const client = validatedUrl.protocol === 'https:' ? https : http
+    const req = client.get(validatedUrl, { headers: getAuthHeaders(validatedUrl) }, (res) => {
       if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
         res.resume()
-        downloadFileWithGlobalProgress(res.headers.location, dest, globalOffset, globalTotal, onProgress, redirectCount + 1)
+        const redirectUrl = new URL(res.headers.location, validatedUrl).toString()
+        downloadFileWithGlobalProgress(redirectUrl, dest, globalOffset, globalTotal, onProgress, redirectCount + 1)
           .then(resolve).catch(reject)
         return
       }
@@ -629,15 +615,23 @@ function downloadFileWithGlobalProgress(
   })
 }
 
-/** Extract a .tar.gz file using the system tar command (ships on Windows 10+). */
-function extractTarGz(archive: string, destDir: string): Promise<void> {
+function runTar(args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
-    execFile('tar', ['-xzf', archive, '-C', destDir], (err, _stdout, stderr) => {
+    execFile('tar', args, { maxBuffer: 64 * 1024 * 1024 }, (err, stdout, stderr) => {
       if (err) {
-        reject(new Error(`tar extraction failed: ${stderr || err.message}`))
+        reject(new Error(`tar failed: ${stderr || err.message}`))
         return
       }
-      resolve()
+      resolve(stdout)
     })
   })
+}
+
+/** Validate and extract a .tar.gz using the system tar command. */
+async function extractTarGz(archive: string, destDir: string): Promise<void> {
+  const entries = await runTar(['-tzf', archive])
+  validatePythonArchiveEntries(entries)
+  const verboseEntries = await runTar(['-tvzf', archive])
+  validatePythonArchiveTypes(verboseEntries)
+  await runTar(['-xzf', archive, '-C', destDir])
 }

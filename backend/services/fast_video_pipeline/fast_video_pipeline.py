@@ -20,6 +20,8 @@ class FastVideoPipeline(Protocol):
         upsampler_path: str,
         device: torch.device,
         streaming_prefetch_count: int | None,
+        lora_path: str | None = None,
+        lora_scale: float = 1.0,
     ) -> "FastVideoPipeline":
         ...
 

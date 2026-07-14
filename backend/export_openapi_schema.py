@@ -69,6 +69,13 @@ def _build_schema() -> dict[str, object]:
             pose_processor_pipeline_class=cast(Any, type(fake.pose_processor_pipeline)),
             a2v_pipeline_class=cast(Any, type(fake.a2v_pipeline)),
             retake_pipeline_class=cast(Any, type(fake.retake_pipeline)),
+            image_edit_pipeline_class=cast(Any, type(fake.image_edit_pipeline)),
+            trainer_target=cast(Any, fake.trainer_target),
+            video_captioner=cast(Any, fake.video_captioner),
+            clip_processor=cast(Any, fake.clip_processor),
+            image_editor=cast(Any, fake.image_editor),
+            video_restyler=cast(Any, fake.video_restyler),
+            pexels_client=cast(Any, fake.pexels_client),
         )
 
         handler = build_initial_state(config, AppSettings(), service_bundle=bundle)

@@ -22,6 +22,8 @@ backend/**/__pycache__/
 *.egg
 *.egg-info/
 .eggs/
+.pytest_cache/
+.ruff_cache/
 
 # Claude Code
 .claude/*
@@ -29,6 +31,10 @@ backend/**/__pycache__/
 !.claude/skills/
 !.claude/skills/video-editor-development/
 !.claude/skills/video-editor-development/SKILL.md
+
+# Local agent plans and machine-specific repository guards
+.cursor/plans/
+.cursor/rules/
 
 # IDE
 .idea/
@@ -84,6 +90,8 @@ backend/generated/
 # Build artifacts
 release/
 python-embed/
+python-deps-hash.txt
+python-runtime-manifest.json
 
 # Downloaded during CI for Windows NSIS installer
 resources/vc_redist.x64.exe

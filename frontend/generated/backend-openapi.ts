@@ -112,6 +112,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/generate-image-edit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route Generate Image Edit
+         * @description POST /api/generate-image-edit — FLUX.2 [klein] 9B image generation/editing.
+         */
+        post: operations["route_generate_image_edit_api_generate_image_edit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/generate/cancel": {
         parameters: {
             query?: never;
@@ -124,8 +144,34 @@ export interface paths {
         /**
          * Route Generate Cancel
          * @description POST /api/generate/cancel.
+         *
+         *     Cancels the active generation and any running queue item. Routing
+         *     through `AppHandler.cancel_generation` (rather than the generation
+         *     handler directly) ensures a stuck queued generation's ledger entry
+         *     is marked cancelled even when the inference call never returns to
+         *     the runner, so a restart doesn't re-run it.
          */
         post: operations["route_generate_cancel_api_generate_cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/generate/image-models-specs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Route Image Model Specs
+         * @description GET /api/generate/image-models-specs — catalog of downloadable image models.
+         */
+        get: operations["route_image_model_specs_api_generate_image_models_specs_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -223,6 +269,1510 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/lora-inference/auto-prompt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Lora Inference Auto Prompt */
+        post: operations["route_lora_inference_auto_prompt_api_lora_inference_auto_prompt_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora-inference/entries/{lora_id}/example": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Lora Inference Set Example */
+        post: operations["route_lora_inference_set_example_api_lora_inference_entries__lora_id__example_post"];
+        /** Route Lora Inference Clear Example */
+        delete: operations["route_lora_inference_clear_example_api_lora_inference_entries__lora_id__example_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora-inference/entries/{lora_id}/example-media": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Route Lora Inference Example Media
+         * @description Serve a LoRA's example media bytes to the frontend.
+         *
+         *     Secure by construction: only the entry id is client-supplied; the file path
+         *     is resolved server-side from the imported ledger / training job. No
+         *     client-controlled path reaches the filesystem, so there's no traversal
+         *     surface. 404s cleanly when the entry has no example or the file is missing.
+         */
+        get: operations["route_lora_inference_example_media_api_lora_inference_entries__lora_id__example_media_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora-inference/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Lora Inference Generate */
+        post: operations["route_lora_inference_generate_api_lora_inference_generate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora-inference/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Lora Inference Import */
+        post: operations["route_lora_inference_import_api_lora_inference_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora-inference/imported/{lora_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Route Lora Inference Delete Imported */
+        delete: operations["route_lora_inference_delete_imported_api_lora_inference_imported__lora_id__delete"];
+        options?: never;
+        head?: never;
+        /** Route Lora Inference Update Imported */
+        patch: operations["route_lora_inference_update_imported_api_lora_inference_imported__lora_id__patch"];
+        trace?: never;
+    };
+    "/api/lora-inference/imported/{lora_id}/reprofile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Lora Inference Reprofile Imported */
+        post: operations["route_lora_inference_reprofile_imported_api_lora_inference_imported__lora_id__reprofile_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora-inference/prompt-template/{lora_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Route Lora Inference Update Prompt Template */
+        put: operations["route_lora_inference_update_prompt_template_api_lora_inference_prompt_template__lora_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora-inference/registry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Route Lora Inference Registry */
+        get: operations["route_lora_inference_registry_api_lora_inference_registry_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora-inference/trained/{lora_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Route Lora Inference Delete Trained */
+        delete: operations["route_lora_inference_delete_trained_api_lora_inference_trained__lora_id__delete"];
+        options?: never;
+        head?: never;
+        /** Route Lora Inference Update Trained */
+        patch: operations["route_lora_inference_update_trained_api_lora_inference_trained__lora_id__patch"];
+        trace?: never;
+    };
+    "/api/lora/animate-frame": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Animate Frame */
+        post: operations["route_animate_frame_api_lora_animate_frame_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/apply-edits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Apply Edits */
+        post: operations["route_apply_edits_api_lora_apply_edits_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/caption-clip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Caption Clip */
+        post: operations["route_caption_clip_api_lora_caption_clip_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/clip-jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Route List Clip Jobs */
+        get: operations["route_list_clip_jobs_api_lora_clip_jobs_get"];
+        put?: never;
+        /**
+         * Route Enqueue Clip Jobs
+         * @description Enqueue local prep jobs for a batch of source clips.
+         *
+         *     Returns the (possibly reused) jobs immediately; the actual ffmpeg
+         *     work runs on the clip-jobs runner. Poll `GET /clip-jobs` for results.
+         */
+        post: operations["route_enqueue_clip_jobs_api_lora_clip_jobs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/datasets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Route List Datasets */
+        get: operations["route_list_datasets_api_lora_datasets_get"];
+        put?: never;
+        /** Route Create Dataset */
+        post: operations["route_create_dataset_api_lora_datasets_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/datasets/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Import Dataset */
+        post: operations["route_import_dataset_api_lora_datasets_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/datasets/{dataset_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Route Delete Dataset */
+        delete: operations["route_delete_dataset_api_lora_datasets__dataset_id__delete"];
+        options?: never;
+        head?: never;
+        /** Route Update Dataset */
+        patch: operations["route_update_dataset_api_lora_datasets__dataset_id__patch"];
+        trace?: never;
+    };
+    "/api/lora/datasets/{dataset_id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Archive Dataset */
+        post: operations["route_archive_dataset_api_lora_datasets__dataset_id__archive_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/datasets/{dataset_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route Cancel Upload
+         * @description Cancel an in-progress upload: releases the provisioned GPU pod and stops
+         *     the run before preprocessing. Only valid while `status == uploading`.
+         */
+        post: operations["route_cancel_upload_api_lora_datasets__dataset_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/datasets/{dataset_id}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Export Dataset */
+        post: operations["route_export_dataset_api_lora_datasets__dataset_id__export_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/datasets/{dataset_id}/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route Move Dataset
+         * @description Move a dataset into a folder. `folderId` null = root.
+         */
+        post: operations["route_move_dataset_api_lora_datasets__dataset_id__move_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/datasets/{dataset_id}/rename": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route Rename Dataset
+         * @description Rename a dataset at any status (display-only; doesn't touch the remote).
+         */
+        post: operations["route_rename_dataset_api_lora_datasets__dataset_id__rename_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/datasets/{dataset_id}/reselect-runpod": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Reselect Dataset Runpod */
+        post: operations["route_reselect_dataset_runpod_api_lora_datasets__dataset_id__reselect_runpod_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/datasets/{dataset_id}/unarchive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Unarchive Dataset */
+        post: operations["route_unarchive_dataset_api_lora_datasets__dataset_id__unarchive_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/datasets/{dataset_id}/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Upload Dataset */
+        post: operations["route_upload_dataset_api_lora_datasets__dataset_id__upload_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/derivations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Route List Derivations */
+        get: operations["route_list_derivations_api_lora_derivations_get"];
+        put?: never;
+        /**
+         * Route Create Derivation
+         * @description Enqueue a background 'generate target/variant' pipeline.
+         *
+         *     Returns the created job immediately; the multi-stage work (frame edit
+         *     -> local IC-LoRA drive or remote Kling) runs on the derivation runner.
+         *     Poll `GET /derivations` for progress and results.
+         */
+        post: operations["route_create_derivation_api_lora_derivations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/derivations/cancel-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route Cancel All Derivations
+         * @description Abort a whole bulk Fal generation run (optionally scoped to a dataset).
+         *
+         *     Cancels every active job at once; the runner stops in-flight Fal calls
+         *     between stages. Returns the updated jobs ledger.
+         */
+        post: operations["route_cancel_all_derivations_api_lora_derivations_cancel_all_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/derivations/{job_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route Approve Derivation
+         * @description Approve a reviewed edit; the job proceeds to the motion drive.
+         */
+        post: operations["route_approve_derivation_api_lora_derivations__job_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/derivations/{job_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Cancel Derivation */
+        post: operations["route_cancel_derivation_api_lora_derivations__job_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/derivations/{job_id}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Dismiss Derivation */
+        post: operations["route_dismiss_derivation_api_lora_derivations__job_id__dismiss_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/derivations/{job_id}/regenerate-edit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route Regenerate Derivation Edit
+         * @description Re-run the Nano Banana edit for a reviewed job (optional new prompt).
+         */
+        post: operations["route_regenerate_derivation_edit_api_lora_derivations__job_id__regenerate_edit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/derivations/{job_id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Retry Derivation */
+        post: operations["route_retry_derivation_api_lora_derivations__job_id__retry_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/edit-frame": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Edit Frame */
+        post: operations["route_edit_frame_api_lora_edit_frame_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/folders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route Create Folder
+         * @description Create a collection folder, optionally nested under `parentId`.
+         */
+        post: operations["route_create_folder_api_lora_folders_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/folders/{folder_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Route Delete Folder
+         * @description Delete a folder. Non-recursive moves contents up to the deleted folder's
+         *     parent; recursive deletes subfolders + contained datasets (compute-release).
+         */
+        delete: operations["route_delete_folder_api_lora_folders__folder_id__delete"];
+        options?: never;
+        head?: never;
+        /** Route Rename Folder */
+        patch: operations["route_rename_folder_api_lora_folders__folder_id__patch"];
+        trace?: never;
+    };
+    "/api/lora/folders/{folder_id}/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route Move Folder
+         * @description Reparent a folder (rejects cycles). `parentId` null = root.
+         */
+        post: operations["route_move_folder_api_lora_folders__folder_id__move_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/local-eligibility": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Route Local Eligibility
+         * @description Report whether local (WSL2) LoRA training is possible on this machine.
+         *
+         *     A read-only capability probe the UI polls to decide whether to offer the
+         *     "train locally" provider; never errors (an unavailable setup is reported
+         *     as `eligible=false` with a `reason`).
+         */
+        get: operations["route_local_eligibility_api_lora_local_eligibility_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/motion-edit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Motion Edit */
+        post: operations["route_motion_edit_api_lora_motion_edit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/pexels/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route Pexels Download
+         * @description Download a chosen Pexels asset into app storage for use as a clip.
+         */
+        post: operations["route_pexels_download_api_lora_pexels_download_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/pexels/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route Pexels Search
+         * @description Search Pexels stock media (BYOK) for the LoRA collection browser.
+         */
+        post: operations["route_pexels_search_api_lora_pexels_search_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/preprocessed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Route List Preprocessed */
+        get: operations["route_list_preprocessed_api_lora_preprocessed_get"];
+        put?: never;
+        /** Route Start Preprocessing */
+        post: operations["route_start_preprocessing_api_lora_preprocessed_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/preprocessed/{preprocessed_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Route Delete Preprocessed */
+        delete: operations["route_delete_preprocessed_api_lora_preprocessed__preprocessed_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/preprocessed/{preprocessed_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Cancel Preprocessing */
+        post: operations["route_cancel_preprocessing_api_lora_preprocessed__preprocessed_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/preprocessed/{preprocessed_id}/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route Reset Preprocessing
+         * @description Clear a finished preprocess's cached latents + captions and re-run from
+         *     scratch (a fresh start, vs. resume which reuses cached state).
+         */
+        post: operations["route_reset_preprocessing_api_lora_preprocessed__preprocessed_id__reset_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/preprocessed/{preprocessed_id}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route Resume Preprocessing
+         * @description Re-run a failed/cancelled preprocess, reusing the uploaded workspace +
+         *     cached captions (skips re-captioning, re-runs the latent-caching step).
+         */
+        post: operations["route_resume_preprocessing_api_lora_preprocessed__preprocessed_id__resume_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/probe-clip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Probe Clip */
+        post: operations["route_probe_clip_api_lora_probe_clip_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/profiles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Route List Profiles */
+        get: operations["route_list_profiles_api_lora_profiles_get"];
+        put?: never;
+        /** Route Create Profile */
+        post: operations["route_create_profile_api_lora_profiles_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/profiles/{profile_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Route Delete Profile */
+        delete: operations["route_delete_profile_api_lora_profiles__profile_id__delete"];
+        options?: never;
+        head?: never;
+        /** Route Update Profile */
+        patch: operations["route_update_profile_api_lora_profiles__profile_id__patch"];
+        trace?: never;
+    };
+    "/api/lora/restyle-clip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Restyle Clip */
+        post: operations["route_restyle_clip_api_lora_restyle_clip_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/runpod/cache/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Disable Runpod Cache */
+        post: operations["route_disable_runpod_cache_api_lora_runpod_cache_disable_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/runpod/connect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route Connect Runpod
+         * @description Validate the saved key and discover GPUs, volumes, and readiness.
+         *
+         *     This endpoint is read-only and never creates paid storage.
+         */
+        post: operations["route_connect_runpod_api_lora_runpod_connect_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/runpod/pods": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Route List Runpod Pods
+         * @description List every RunPod pod on the account for the Trainer compute panel.
+         */
+        get: operations["route_list_runpod_pods_api_lora_runpod_pods_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/runpod/pods/{pod_id}/keep-alive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Keep Runpod Pod Alive */
+        post: operations["route_keep_runpod_pod_alive_api_lora_runpod_pods__pod_id__keep_alive_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/runpod/pods/{pod_id}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route Resume Runpod Pod
+         * @description Start a stopped RunPod pod (resumes GPU billing).
+         */
+        post: operations["route_resume_runpod_pod_api_lora_runpod_pods__pod_id__resume_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/runpod/pods/{pod_id}/stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route Stop Runpod Pod
+         * @description Pause a running RunPod pod (stops GPU billing, keeps the container disk).
+         */
+        post: operations["route_stop_runpod_pod_api_lora_runpod_pods__pod_id__stop_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/runpod/pods/{pod_id}/terminate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route Terminate Runpod Pod
+         * @description Terminate a specific RunPod pod (from the connect UI's active-pods list).
+         */
+        post: operations["route_terminate_runpod_pod_api_lora_runpod_pods__pod_id__terminate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/runpod/volumes/create": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route Create Runpod Volume
+         * @description Explicitly create and select one paid app-owned cache volume.
+         */
+        post: operations["route_create_runpod_volume_api_lora_runpod_volumes_create_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/runpod/volumes/relocate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Relocate Runpod Volume */
+        post: operations["route_relocate_runpod_volume_api_lora_runpod_volumes_relocate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/runpod/volumes/select": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Select Runpod Volume */
+        post: operations["route_select_runpod_volume_api_lora_runpod_volumes_select_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/runpod/volumes/{volume_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Route Delete Runpod Volume */
+        delete: operations["route_delete_runpod_volume_api_lora_runpod_volumes__volume_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/scene-split": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Scene Split */
+        post: operations["route_scene_split_api_lora_scene_split_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/test-connection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Test Connection */
+        post: operations["route_test_connection_api_lora_test_connection_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/training": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Route List Training */
+        get: operations["route_list_training_api_lora_training_get"];
+        put?: never;
+        /** Route Start Training */
+        post: operations["route_start_training_api_lora_training_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/training-pipeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route Start Training Pipeline
+         * @description One-click: upload → preprocess → train. Stores the intent on the dataset;
+         *     the reconciler auto-advances through every stage.
+         */
+        post: operations["route_start_training_pipeline_api_lora_training_pipeline_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/training/estimate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Estimate Training Cost */
+        post: operations["route_estimate_training_cost_api_lora_training_estimate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/training/{training_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Route Delete Training */
+        delete: operations["route_delete_training_api_lora_training__training_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/training/{training_id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Archive Training */
+        post: operations["route_archive_training_api_lora_training__training_id__archive_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/training/{training_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Cancel Training */
+        post: operations["route_cancel_training_api_lora_training__training_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/training/{training_id}/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Route Training Logs */
+        get: operations["route_training_logs_api_lora_training__training_id__logs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/training/{training_id}/publish/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Publish Export */
+        post: operations["route_publish_export_api_lora_training__training_id__publish_export_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/training/{training_id}/publish/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Publish Preview */
+        post: operations["route_publish_preview_api_lora_training__training_id__publish_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/training/{training_id}/reselect-runpod": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Reselect Training Runpod */
+        post: operations["route_reselect_training_runpod_api_lora_training__training_id__reselect_runpod_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/training/{training_id}/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route Reset Training
+         * @description Clear a finished training run's checkpoints/samples and re-train from
+         *     scratch (a fresh start, vs. resume which continues from the last
+         *     checkpoint).
+         */
+        post: operations["route_reset_training_api_lora_training__training_id__reset_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/training/{training_id}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route Resume Training
+         * @description Resume a failed/cancelled training run from its last saved checkpoint
+         *     (re-runs ``train.py`` with ``load_checkpoint`` set to the highest step
+         *     reached).
+         */
+        post: operations["route_resume_training_api_lora_training__training_id__resume_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/training/{training_id}/retry-download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route Retry Training Download
+         * @description Re-fetch the trained adapter for a run that finished training but failed
+         *     at the download step (the weights persist on the network volume).
+         */
+        post: operations["route_retry_training_download_api_lora_training__training_id__retry_download_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/training/{training_id}/unarchive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Unarchive Training */
+        post: operations["route_unarchive_training_api_lora_training__training_id__unarchive_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lora/training/{training_id}/validation-media": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Route Training Validation Media
+         * @description Serve one downloaded validation sample's media file to the frontend.
+         *
+         *     Secure by construction: the only request-supplied values are the run id and
+         *     the (step, sampleIndex, extension) lookup key — the file path is resolved server-side
+         *     from the job's `validation_feed` (written by the runner from a fixed remote
+         *     `samples/` dir). No client-controlled path ever reaches the filesystem, so
+         *     there's no path-traversal surface.
+         */
+        get: operations["route_training_validation_media_api_lora_training__training_id__validation_media_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/media/extract-audio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route Extract Audio
+         * @description POST /api/media/extract-audio — pull a slice of audio to WAV.
+         *
+         *     `durationSeconds=0` means "to end of file"; positive values are
+         *     bounded by both Pydantic (le=300) and a defence-in-depth
+         *     ceiling in the handler. Output is mono / 48kHz / WAV — the
+         *     format the a2v MLX pipeline ingests directly without another
+         *     transcode.
+         *
+         *     Same 422 contract as extract-frame: source-side problems
+         *     surface as 422 with a stable error code; ffmpeg-internal
+         *     failures (rare in practice) also use 422 since the client's
+         *     only useful response is "show the user, don't retry."
+         */
+        post: operations["route_extract_audio_api_media_extract_audio_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/media/extract-frame": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route Extract Frame
+         * @description POST /api/media/extract-frame — pull a single frame to a PNG.
+         *
+         *     Used by the Premiere plugin to convert "selected clip + playhead
+         *     time" into a path the queue can consume as `imagePath`. Out-of-
+         *     range times are silently clamped to last-frame by ffmpeg's seek
+         *     behaviour, so the plugin doesn't need to query clip duration
+         *     upfront — the latency cost of an extra round trip would dominate
+         *     any UX win from rejecting bogus timestamps.
+         *
+         *     Returns 422 when `sourcePath` doesn't exist, isn't a regular
+         *     file, or ffmpeg can't decode it. The frontend should treat 422
+         *     as "show the user 'this clip can't be used', don't retry."
+         */
+        post: operations["route_extract_frame_api_media_extract_frame_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/models/check-access": {
         parameters: {
             query?: never;
@@ -234,6 +1784,23 @@ export interface paths {
         put?: never;
         /** Route Check Model Access */
         post: operations["route_check_model_access_api_models_check_access_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/models/checkpoint-path": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Route Checkpoint Path */
+        get: operations["route_checkpoint_path_api_models_checkpoint_path_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -308,6 +1875,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/models/load-from-path": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Load Model From Path */
+        post: operations["route_load_model_from_path_api_models_load_from_path_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/models/ltx-ic-lora-recommendation": {
         parameters: {
             query?: never;
@@ -353,6 +1937,280 @@ export interface paths {
         get: operations["route_text_encoder_recommendation_api_models_text_encoder_recommendation_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Route Get Queue
+         * @description GET /api/queue — full queue state snapshot.
+         *
+         *     Returned shape mirrors `queue.json` 1:1 (camelCased) so the side
+         *     panel can drive its entire render off a single payload. Polling
+         *     callers should hit this rather than `/api/queue/items` to avoid
+         *     racing the `paused` flag against the items list.
+         */
+        get: operations["route_get_queue_api_queue_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/queue/clear-completed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route Clear Completed
+         * @description POST /api/queue/clear-completed — purge completed items.
+         */
+        post: operations["route_clear_completed_api_queue_clear_completed_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/queue/clear-failed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route Clear Failed
+         * @description POST /api/queue/clear-failed — purge failed items.
+         *
+         *     Failed items are kept around until explicitly cleared so the
+         *     user can see what went wrong and decide whether to re-enqueue
+         *     them manually (the auto-retry policy already had its one chance
+         *     on each).
+         */
+        post: operations["route_clear_failed_api_queue_clear_failed_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/queue/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Route List Queue Items
+         * @description GET /api/queue/items — list items, optionally filtered by status.
+         *
+         *     The frontend uses the unfiltered `/api/queue` response for the
+         *     main panel render; this endpoint exists mostly for diagnostics
+         *     and status-bucket-specific UI affordances (e.g., a "Failed
+         *     items" admin view).
+         */
+        get: operations["route_list_queue_items_api_queue_items_get"];
+        put?: never;
+        /**
+         * Route Enqueue Item
+         * @description POST /api/queue/items — enqueue a single item.
+         *
+         *     The Generate button in GenSpace lands here; the renderer keeps the
+         *     returned item's id and polls `/api/queue/items/{id}` for status. The
+         *     runner picks the item up via the wakeup event set inside
+         *     `QueueHandler.enqueue`. The payload is validated at the boundary so
+         *     malformed requests get an immediate 422 instead of failing two
+         *     attempts later inside the runner.
+         */
+        post: operations["route_enqueue_item_api_queue_items_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/queue/items/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route Enqueue Batch
+         * @description POST /api/queue/items/batch — enqueue many items in one call.
+         *
+         *     A single transaction (one `queue.json` write, one wakeup event)
+         *     makes landing 20-50 prompts at once cheap enough that the manual
+         *     multi-prompt entry flow and the brainstorm auto-enqueue flow can
+         *     both enqueue everything synchronously without a noticeable delay.
+         *     Validation is all-or-nothing: one bad payload rejects the batch.
+         */
+        post: operations["route_enqueue_batch_api_queue_items_batch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/queue/items/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Route Get Queue Item
+         * @description GET /api/queue/items/{id} — fetch one item.
+         *
+         *     Used by the generation hook to track an enqueued item's state from
+         *     pending -> running -> completed / failed / cancelled without having
+         *     to scan the full queue payload on every poll tick.
+         */
+        get: operations["route_get_queue_item_api_queue_items__item_id__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Route Remove Queue Item
+         * @description DELETE /api/queue/items/{id} — remove a non-running item.
+         *
+         *     Running items must be cancelled first (via /api/generate/cancel,
+         *     which the runner observes and routes through `cancel_running`).
+         *     The 409 here protects against a race where the user hits Delete
+         *     on a row that just transitioned from pending to running between
+         *     panel render and click.
+         */
+        delete: operations["route_remove_queue_item_api_queue_items__item_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Route Update Queue Item
+         * @description PATCH /api/queue/items/{id} — edit a pending item's payload.
+         *
+         *     The side panel uses this to let users tweak a queued prompt
+         *     (typo fix, parameter change) without losing its place in the
+         *     queue. Editing is only valid while the item is pending: once
+         *     the runner has claimed it, the snapshot is in flight and we
+         *     return 409. Other terminal states (completed / failed /
+         *     cancelled) likewise reject — re-enqueue is the right path.
+         */
+        patch: operations["route_update_queue_item_api_queue_items__item_id__patch"];
+        trace?: never;
+    };
+    "/api/queue/items/{item_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route Cancel Queue Item
+         * @description POST /api/queue/items/{id}/cancel — cancel a pending item.
+         *
+         *     Only valid for `pending` items; running items go through
+         *     `/api/generate/cancel` (existing route) which lets the inference
+         *     loop unwind cleanly. Returns 409 if the item is already running
+         *     or terminal.
+         */
+        post: operations["route_cancel_queue_item_api_queue_items__item_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/queue/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route Pause Queue
+         * @description POST /api/queue/pause — block the runner from claiming new items.
+         *
+         *     Idempotent. The currently-running item (if any) finishes
+         *     naturally; pause just prevents the next claim. Survives across
+         *     process restarts because the flag lives in queue.json.
+         */
+        post: operations["route_pause_queue_api_queue_pause_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/queue/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route Reorder Queue
+         * @description POST /api/queue/reorder — replace pending order with a permutation.
+         *
+         *     Body is the full new ordering of currently-pending item ids; the
+         *     handler validates that the request is exactly a permutation
+         *     (same set of ids, same length) and rejects partial moves so the
+         *     frontend doesn't have to reason about intermediate states.
+         */
+        post: operations["route_reorder_queue_api_queue_reorder_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/queue/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route Resume Queue
+         * @description POST /api/queue/resume — let the runner claim again.
+         *
+         *     Sets the wakeup event so the runner doesn't wait for the next
+         *     enqueue or for the idle-poll timeout to fire.
+         */
+        post: operations["route_resume_queue_api_queue_resume_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -406,6 +2264,26 @@ export interface paths {
         /** Route Post Settings */
         post: operations["route_post_settings_api_settings_post"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/settings/credentials/{credential}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Route Delete Credential
+         * @description Remove one stored API credential without exposing its value.
+         */
+        delete: operations["route_delete_credential_api_settings_credentials__credential__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -472,26 +2350,96 @@ export interface components {
             falApiKey?: string | null;
             /** Geminiapikey */
             geminiApiKey?: string | null;
+            /** Hftoken */
+            hfToken?: string | null;
             /** Lockedseed */
             lockedSeed?: number | null;
+            /** Loraautoprovision */
+            loraAutoProvision?: boolean | null;
+            /** Lorafalconcurrency */
+            loraFalConcurrency?: number | null;
+            /** Loramodelcheckpointfile */
+            loraModelCheckpointFile?: string | null;
+            /** Loramodelhfrepo */
+            loraModelHfRepo?: string | null;
+            /** Lorananobananamodel */
+            loraNanoBananaModel?: string | null;
+            /** Loraprovider */
+            loraProvider?: ("runpod" | "local") | null;
+            /** Loraremotemodelpath */
+            loraRemoteModelPath?: string | null;
+            /** Loraremotetextencoderpath */
+            loraRemoteTextEncoderPath?: string | null;
+            /** Loraremoteworkspacedir */
+            loraRemoteWorkspaceDir?: string | null;
+            /** Loratextencoderhfrepo */
+            loraTextEncoderHfRepo?: string | null;
+            /** Loratrainerreporef */
+            loraTrainerRepoRef?: string | null;
+            /** Loratrainerrepourl */
+            loraTrainerRepoUrl?: string | null;
             /** Ltxapikey */
             ltxApiKey?: string | null;
             /** Modelsdir */
             modelsDir?: string | null;
+            /** Pexelsapikey */
+            pexelsApiKey?: string | null;
             /** Promptcachesize */
             promptCacheSize?: number | null;
             /** Promptenhancerenabledi2V */
             promptEnhancerEnabledI2V?: boolean | null;
             /** Promptenhancerenabledt2V */
             promptEnhancerEnabledT2V?: boolean | null;
+            /** Runpodapikey */
+            runpodApiKey?: string | null;
+            /** Runpodgputype */
+            runpodGpuType?: string | null;
+            /** Runpodgpuvramgb */
+            runpodGpuVramGb?: number | null;
+            /** Runpodidlestopminutes */
+            runpodIdleStopMinutes?: number | null;
+            /** Runpodimage */
+            runpodImage?: string | null;
+            /** Runpodkeepmodelcached */
+            runpodKeepModelCached?: boolean | null;
+            /** Runpodnetworkvolumeid */
+            runpodNetworkVolumeId?: string | null;
+            /** Runpodvolumesizegb */
+            runpodVolumeSizeGb?: number | null;
             /** Seedlocked */
             seedLocked?: boolean | null;
+            /** Usedevqualitybase */
+            useDevQualityBase?: boolean | null;
             /** Uselocaltextencoder */
             useLocalTextEncoder?: boolean | null;
             /** Usetorchcompile */
             useTorchCompile?: boolean | null;
             /** Userprefersltxapivideogenerations */
             userPrefersLtxApiVideoGenerations?: boolean | null;
+        };
+        /** AutoPromptRequest */
+        AutoPromptRequest: {
+            /** Loraid */
+            loraId: string;
+            /** Videopath */
+            videoPath: string;
+        };
+        /** AutoPromptResponse */
+        AutoPromptResponse: {
+            /** Prompt */
+            prompt: string;
+        };
+        /**
+         * CancelAllLoraDerivationsRequest
+         * @description Abort a whole bulk Fal generation run in one call.
+         *
+         *     Cancels every active derivation job, optionally scoped to a single
+         *     dataset (`datasetId`) so unrelated collections keep running. Omit to
+         *     cancel across all datasets.
+         */
+        CancelAllLoraDerivationsRequest: {
+            /** Datasetid */
+            datasetId?: string | null;
         };
         /** CancelCancellingResponse */
         CancelCancellingResponse: {
@@ -514,7 +2462,7 @@ export interface components {
         /** CheckModelAccessRequest */
         CheckModelAccessRequest: {
             /** Cp Ids */
-            cp_ids?: ("ltx-2.3-22b-distilled" | "ltx-2.3-spatial-upscaler-x2-1.0" | "ltx-2.3-22b-ic-lora-union-control-ref0.5" | "dpt-hybrid-midas" | "yolox-l-torchscript" | "dw-ll-ucoco-384-bs5" | "gemma-3-12b-it-qat-q4_0-unquantized" | "z-image-turbo")[];
+            cp_ids?: ("ltx-2.3-22b-distilled" | "ltx-2.3-22b-dev" | "ltx-2.3-22b-distilled-lora-384-1.1" | "ltx-2.3-spatial-upscaler-x2-1.0" | "ltx-2.3-22b-ic-lora-union-control-ref0.5" | "dpt-hybrid-midas" | "yolox-l-torchscript" | "dw-ll-ucoco-384-bs5" | "gemma-3-12b-it-qat-q4_0-unquantized" | "z-image-turbo" | "flux-2-klein-9b")[];
         };
         /** CheckModelAccessResponse */
         CheckModelAccessResponse: {
@@ -522,6 +2470,178 @@ export interface components {
             access: {
                 [key: string]: "authorized" | "not_authorized";
             };
+        };
+        /**
+         * CheckpointPathResponse
+         * @description Resolved on-disk location for a checkpoint (used by "Reveal in Explorer").
+         *
+         *     `path` is the absolute path the app expects the checkpoint at; `exists`
+         *     is whether it's present (downloaded/linked) there.
+         */
+        CheckpointPathResponse: {
+            /**
+             * Cp Id
+             * @enum {string}
+             */
+            cp_id: "ltx-2.3-22b-distilled" | "ltx-2.3-22b-dev" | "ltx-2.3-22b-distilled-lora-384-1.1" | "ltx-2.3-spatial-upscaler-x2-1.0" | "ltx-2.3-22b-ic-lora-union-control-ref0.5" | "dpt-hybrid-midas" | "yolox-l-torchscript" | "dw-ll-ucoco-384-bs5" | "gemma-3-12b-it-qat-q4_0-unquantized" | "z-image-turbo" | "flux-2-klein-9b";
+            /** Exists */
+            exists: boolean;
+            /** Path */
+            path: string;
+        };
+        /** ClearQueueResponse */
+        ClearQueueResponse: {
+            /** Cleared */
+            cleared: number;
+        };
+        /** CreateLoraDatasetRequest */
+        CreateLoraDatasetRequest: {
+            /** Clips */
+            clips?: components["schemas"]["LoraClipInput"][];
+            /** Name */
+            name: string;
+            /** Originatingprojectid */
+            originatingProjectId?: string | null;
+            /** Triggerword */
+            triggerWord?: string | null;
+            /**
+             * Type
+             * @default standard
+             * @enum {string}
+             */
+            type: "standard" | "ic_lora";
+        };
+        /**
+         * CreateLoraDerivationJobRequest
+         * @description Enqueue a background 'generate target / variant' pipeline.
+         *
+         *     The unified staged pipeline:
+         *       1. Source frame: use `framePath` if given (still entry), else extract
+         *          the frame at `frameTimeSeconds` from `driverPath`.
+         *       2. Edit (optional): if `editPrompt` is non-empty, edit that frame with
+         *          Nano Banana to produce the content anchor.
+         *       3. Drive into motion using `driverPath` as the motion source:
+         *          - engine "ltx_local": local IC-LoRA control (`conditioningType`
+         *            depth/canny/pose, `conditioningStrength`), edited still anchors frame 0.
+         *          - engine "kling": remote Kling motion-control (`characterOrientation`).
+         *          - engine "kling_o3": remote Kling O3 video-to-video edit — re-render
+         *            the driver under `scenePrompt`, edited still as appearance reference
+         *            (`keepAudio` preserves the source audio).
+         *
+         *     `referencePath` set => result is a paired *target* for IC-LoRA training
+         *     (its reference is the driver). Null => standalone *variant* (standard LoRA).
+         */
+        CreateLoraDerivationJobRequest: {
+            /**
+             * Caption
+             * @default
+             */
+            caption: string;
+            /**
+             * Characterorientation
+             * @default video
+             * @enum {string}
+             */
+            characterOrientation: "video" | "image";
+            /**
+             * Conditioningstrength
+             * @default 1
+             */
+            conditioningStrength: number;
+            /**
+             * Conditioningtype
+             * @default depth
+             * @enum {string}
+             */
+            conditioningType: "canny" | "depth" | "pose";
+            /** Datasetid */
+            datasetId?: string | null;
+            /**
+             * Direction
+             * @default target
+             * @enum {string}
+             */
+            direction: "target" | "reference" | "variant" | "frame_edit";
+            /** Driverpath */
+            driverPath: string;
+            /**
+             * Editengine
+             * @default fal
+             * @enum {string}
+             */
+            editEngine: "fal" | "klein";
+            /**
+             * Editprompt
+             * @default
+             */
+            editPrompt: string;
+            /**
+             * Engine
+             * @default ltx_local
+             * @enum {string}
+             */
+            engine: "ltx_local" | "kling" | "kling_o3";
+            /**
+             * Frameedited
+             * @default false
+             */
+            frameEdited: boolean;
+            /** Framepath */
+            framePath?: string | null;
+            /**
+             * Frametimeseconds
+             * @default 0
+             */
+            frameTimeSeconds: number;
+            /**
+             * Keepaudio
+             * @default true
+             */
+            keepAudio: boolean;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+            /** Nanobananamodel */
+            nanoBananaModel?: ("nano-banana" | "nano-banana-2" | "nano-banana-pro") | null;
+            /** Referencepath */
+            referencePath?: string | null;
+            /**
+             * Requirereview
+             * @default false
+             */
+            requireReview: boolean;
+            /**
+             * Sceneprompt
+             * @default
+             */
+            scenePrompt: string;
+            /** Sourceclipid */
+            sourceClipId?: string | null;
+        };
+        /**
+         * CreateLoraFolderRequest
+         * @description Create a folder, optionally nested under `parentId` (null = root).
+         */
+        CreateLoraFolderRequest: {
+            /** Name */
+            name: string;
+            /** Parentid */
+            parentId?: string | null;
+        };
+        /** CreateTrainingProfileRequest */
+        CreateTrainingProfileRequest: {
+            config?: components["schemas"]["LoraTrainingConfigApi"];
+            /** Datasettypes */
+            datasetTypes?: ("standard" | "ic_lora")[];
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Name */
+            name: string;
         };
         /** DownloadProgressCompleteResponse */
         DownloadProgressCompleteResponse: {
@@ -544,11 +2664,11 @@ export interface components {
         /** DownloadProgressRunningResponse */
         DownloadProgressRunningResponse: {
             /** All Files */
-            all_files: ("ltx-2.3-22b-distilled" | "ltx-2.3-spatial-upscaler-x2-1.0" | "ltx-2.3-22b-ic-lora-union-control-ref0.5" | "dpt-hybrid-midas" | "yolox-l-torchscript" | "dw-ll-ucoco-384-bs5" | "gemma-3-12b-it-qat-q4_0-unquantized" | "z-image-turbo")[];
+            all_files: ("ltx-2.3-22b-distilled" | "ltx-2.3-22b-dev" | "ltx-2.3-22b-distilled-lora-384-1.1" | "ltx-2.3-spatial-upscaler-x2-1.0" | "ltx-2.3-22b-ic-lora-union-control-ref0.5" | "dpt-hybrid-midas" | "yolox-l-torchscript" | "dw-ll-ucoco-384-bs5" | "gemma-3-12b-it-qat-q4_0-unquantized" | "z-image-turbo" | "flux-2-klein-9b")[];
             /** Completed Files */
-            completed_files: ("ltx-2.3-22b-distilled" | "ltx-2.3-spatial-upscaler-x2-1.0" | "ltx-2.3-22b-ic-lora-union-control-ref0.5" | "dpt-hybrid-midas" | "yolox-l-torchscript" | "dw-ll-ucoco-384-bs5" | "gemma-3-12b-it-qat-q4_0-unquantized" | "z-image-turbo")[];
+            completed_files: ("ltx-2.3-22b-distilled" | "ltx-2.3-22b-dev" | "ltx-2.3-22b-distilled-lora-384-1.1" | "ltx-2.3-spatial-upscaler-x2-1.0" | "ltx-2.3-22b-ic-lora-union-control-ref0.5" | "dpt-hybrid-midas" | "yolox-l-torchscript" | "dw-ll-ucoco-384-bs5" | "gemma-3-12b-it-qat-q4_0-unquantized" | "z-image-turbo" | "flux-2-klein-9b")[];
             /** Current Downloading File */
-            current_downloading_file: ("ltx-2.3-22b-distilled" | "ltx-2.3-spatial-upscaler-x2-1.0" | "ltx-2.3-22b-ic-lora-union-control-ref0.5" | "dpt-hybrid-midas" | "yolox-l-torchscript" | "dw-ll-ucoco-384-bs5" | "gemma-3-12b-it-qat-q4_0-unquantized" | "z-image-turbo") | null;
+            current_downloading_file: ("ltx-2.3-22b-distilled" | "ltx-2.3-22b-dev" | "ltx-2.3-22b-distilled-lora-384-1.1" | "ltx-2.3-spatial-upscaler-x2-1.0" | "ltx-2.3-22b-ic-lora-union-control-ref0.5" | "dpt-hybrid-midas" | "yolox-l-torchscript" | "dw-ll-ucoco-384-bs5" | "gemma-3-12b-it-qat-q4_0-unquantized" | "z-image-turbo" | "flux-2-klein-9b") | null;
             /** Current File Progress */
             current_file_progress: number;
             /** Error */
@@ -566,6 +2686,149 @@ export interface components {
             total_downloaded_bytes: number;
             /** Total Progress */
             total_progress: number;
+        };
+        /**
+         * EnqueueQueueBatchRequest
+         * @description Batch enqueue body. The queue authoring flows (manual multi-prompt
+         *     entry, brainstorm-with-auto-enqueue) send a single round-trip rather
+         *     than N enqueues; one persistence write per batch keeps `queue.json`
+         *     cheap when landing 20-50 items at once.
+         */
+        EnqueueQueueBatchRequest: {
+            /** Items */
+            items: components["schemas"]["EnqueueQueueItemRequest"][];
+        };
+        /** EnqueueQueueItemRequest */
+        EnqueueQueueItemRequest: {
+            /** Originatingprojectid */
+            originatingProjectId?: string | null;
+            /** Payload */
+            payload: components["schemas"]["VideoQueuePayload"] | components["schemas"]["ImageQueuePayload"] | components["schemas"]["ImageEditQueuePayload"] | components["schemas"]["LoraQueuePayload"];
+            /**
+             * Source
+             * @default genspace
+             * @enum {string}
+             */
+            source: "genspace" | "queue_manual" | "gemini_brainstorm";
+        };
+        /**
+         * ExportLoraDatasetRequest
+         * @description Write a portable, trainer-ready dataset bundle to local disk.
+         *
+         *     `destPath` is a directory (folder mode) or the target `.zip` path
+         *     (zip mode). Rejected clips are excluded unless `includeRejected`.
+         *     `profileId`, when set, builds the bundle's `train_config.yaml` from that
+         *     saved training profile's knobs instead of the built-in defaults; null
+         *     keeps the default config.
+         */
+        ExportLoraDatasetRequest: {
+            /** Destpath */
+            destPath: string;
+            /** Forbiddencaptionwords */
+            forbiddenCaptionWords?: string[];
+            /**
+             * Format
+             * @default folder
+             * @enum {string}
+             */
+            format: "folder" | "zip";
+            /**
+             * Iclorabucketframes
+             * @default 49
+             */
+            icLoraBucketFrames: number;
+            /**
+             * Iclorafps
+             * @default 25
+             */
+            icLoraFps: number;
+            /** Icloramaxdurationseconds */
+            icLoraMaxDurationSeconds?: number | null;
+            /**
+             * Iclorashortside
+             * @default 576
+             */
+            icLoraShortSide: number;
+            /**
+             * Includeconfig
+             * @default true
+             */
+            includeConfig: boolean;
+            /**
+             * Includemanifest
+             * @default true
+             */
+            includeManifest: boolean;
+            /**
+             * Includemodelcard
+             * @default true
+             */
+            includeModelCard: boolean;
+            /**
+             * Includereadme
+             * @default true
+             */
+            includeReadme: boolean;
+            /**
+             * Includerejected
+             * @default false
+             */
+            includeRejected: boolean;
+            /** Profileid */
+            profileId?: string | null;
+        };
+        /** ExportLoraDatasetResponse */
+        ExportLoraDatasetResponse: {
+            /** Clipcount */
+            clipCount: number;
+            /** Droppedpairs */
+            droppedPairs?: string[];
+            /** Exportpath */
+            exportPath: string;
+        };
+        /**
+         * ExtractAudioRequest
+         * @description Pull a slice of audio to disk and return its absolute path.
+         */
+        ExtractAudioRequest: {
+            /**
+             * Durationseconds
+             * @default 0
+             */
+            durationSeconds: number;
+            /** Sourcepath */
+            sourcePath: string;
+            /**
+             * Startseconds
+             * @default 0
+             */
+            startSeconds: number;
+        };
+        /** ExtractAudioResponse */
+        ExtractAudioResponse: {
+            /** Path */
+            path: string;
+        };
+        /**
+         * ExtractFrameRequest
+         * @description Pull a single video frame to disk and return its absolute path.
+         */
+        ExtractFrameRequest: {
+            /** Sourcepath */
+            sourcePath: string;
+            /**
+             * Timeseconds
+             * @default 0
+             */
+            timeSeconds: number;
+        };
+        /**
+         * ExtractFrameResponse
+         * @description Absolute path to the extracted PNG frame.
+         */
+        ExtractFrameResponse: {
+            /** Path */
+            path: string;
         };
         /** GenerateImageCancelledResponse */
         GenerateImageCancelledResponse: {
@@ -585,6 +2848,64 @@ export interface components {
              */
             status: "complete";
         };
+        /** GenerateImageEditCancelledResponse */
+        GenerateImageEditCancelledResponse: {
+            /**
+             * Status
+             * @constant
+             */
+            status: "cancelled";
+        };
+        /** GenerateImageEditCompleteResponse */
+        GenerateImageEditCompleteResponse: {
+            /** Image Paths */
+            image_paths: string[];
+            /**
+             * Status
+             * @constant
+             */
+            status: "complete";
+        };
+        /**
+         * GenerateImageEditRequest
+         * @description Instruction-based image editing with FLUX.2 [klein] 9B (local).
+         *
+         *     With no ``referenceImages`` the model behaves as text-to-image; with one or
+         *     more reference images it performs single/multi-reference instruction editing
+         *     (up to 4 references). Reference paths are local file paths resolved by the
+         *     backend (same convention as the LoRA frame-edit flow).
+         */
+        GenerateImageEditRequest: {
+            /**
+             * Height
+             * @default 1024
+             */
+            height: number;
+            /**
+             * Numimages
+             * @default 1
+             */
+            numImages: number;
+            /**
+             * Numsteps
+             * @default 4
+             */
+            numSteps: number;
+            /** Prompt */
+            prompt: string;
+            /** Referenceimages */
+            referenceImages?: string[];
+            /**
+             * Width
+             * @default 1024
+             */
+            width: number;
+        };
+        /** GenerateImageModelsSpecsResponse */
+        GenerateImageModelsSpecsResponse: {
+            /** Models */
+            models: components["schemas"]["ImageModelSpecApi"][];
+        };
         /** GenerateImageRequest */
         GenerateImageRequest: {
             /**
@@ -592,6 +2913,8 @@ export interface components {
              * @default 1024
              */
             height: number;
+            /** Model */
+            model?: string | null;
             /**
              * Numimages
              * @default 1
@@ -797,7 +3120,7 @@ export interface components {
              * @default canny
              * @enum {string}
              */
-            conditioning_type: "canny" | "depth";
+            conditioning_type: "canny" | "depth" | "pose";
             /**
              * Frame Time
              * @default 0
@@ -814,7 +3137,7 @@ export interface components {
              * Conditioning Type
              * @enum {string}
              */
-            conditioning_type: "canny" | "depth";
+            conditioning_type: "canny" | "depth" | "pose";
             /** Frame Time */
             frame_time: number;
             /** Original */
@@ -854,7 +3177,9 @@ export interface components {
              * Conditioning Type
              * @enum {string}
              */
-            conditioning_type: "canny" | "depth";
+            conditioning_type: "canny" | "depth" | "pose";
+            /** Duration */
+            duration?: number | null;
             /** Images */
             images?: components["schemas"]["IcLoraImageInput"][];
             /**
@@ -867,8 +3192,24 @@ export interface components {
              * @default 30
              */
             num_inference_steps: number;
+            /**
+             * Preserve Audio
+             * @default false
+             */
+            preserve_audio: boolean;
             /** Prompt */
             prompt: string;
+            /**
+             * Refine
+             * @default false
+             */
+            refine: boolean;
+            /**
+             * Resolution
+             * @default 540p
+             * @enum {string}
+             */
+            resolution: "540p" | "720p" | "1080p";
             /** Video Path */
             video_path: string;
         };
@@ -887,10 +3228,122 @@ export interface components {
              */
             strength: number;
         };
+        /**
+         * ImageEditQueuePayload
+         * @description Queue payload for FLUX.2 [klein] 9B image editing (local GPU).
+         *
+         *     Routes through the same durable queue as video/image generations so a
+         *     Klein edit doesn't block the UI (it shows in the queue panel and the
+         *     runner cooperates with the single-flight GPU slot instead of failing
+         *     "already in progress"). Carries the same `GenerateImageEditRequest`
+         *     the synchronous `/api/generate-image-edit` endpoint takes.
+         */
+        ImageEditQueuePayload: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "image_edit";
+            request: components["schemas"]["GenerateImageEditRequest"];
+        };
         /** ImageGenRecommendationResponse */
         ImageGenRecommendationResponse: {
             /** Cp To Download */
-            cp_to_download: ("ltx-2.3-22b-distilled" | "ltx-2.3-spatial-upscaler-x2-1.0" | "ltx-2.3-22b-ic-lora-union-control-ref0.5" | "dpt-hybrid-midas" | "yolox-l-torchscript" | "dw-ll-ucoco-384-bs5" | "gemma-3-12b-it-qat-q4_0-unquantized" | "z-image-turbo") | null;
+            cp_to_download: ("ltx-2.3-22b-distilled" | "ltx-2.3-22b-dev" | "ltx-2.3-22b-distilled-lora-384-1.1" | "ltx-2.3-spatial-upscaler-x2-1.0" | "ltx-2.3-22b-ic-lora-union-control-ref0.5" | "dpt-hybrid-midas" | "yolox-l-torchscript" | "dw-ll-ucoco-384-bs5" | "gemma-3-12b-it-qat-q4_0-unquantized" | "z-image-turbo" | "flux-2-klein-9b") | null;
+        };
+        /** ImageModelSpecApi */
+        ImageModelSpecApi: {
+            /**
+             * Checkpoint Id
+             * @enum {string}
+             */
+            checkpoint_id: "ltx-2.3-22b-distilled" | "ltx-2.3-22b-dev" | "ltx-2.3-22b-distilled-lora-384-1.1" | "ltx-2.3-spatial-upscaler-x2-1.0" | "ltx-2.3-22b-ic-lora-union-control-ref0.5" | "dpt-hybrid-midas" | "yolox-l-torchscript" | "dw-ll-ucoco-384-bs5" | "gemma-3-12b-it-qat-q4_0-unquantized" | "z-image-turbo" | "flux-2-klein-9b";
+            /** Default Resolution */
+            default_resolution: [
+                number,
+                number
+            ];
+            /** Description */
+            description: string;
+            /** Display Name */
+            display_name: string;
+            /** Downloaded */
+            downloaded: boolean;
+            /** Gated */
+            gated: boolean;
+            /** Id */
+            id: string;
+            /**
+             * Inference Status
+             * @enum {string}
+             */
+            inference_status: "available" | "coming_soon";
+            /**
+             * Is Edit Model
+             * @default false
+             */
+            is_edit_model: boolean;
+            /** License */
+            license: string;
+            /** Repo Id */
+            repo_id: string;
+            /** Size Bytes */
+            size_bytes: number;
+            /** Supported Resolutions */
+            supported_resolutions: [
+                number,
+                number
+            ][];
+        };
+        /** ImageQueuePayload */
+        ImageQueuePayload: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "image";
+            request: components["schemas"]["GenerateImageRequest"];
+        };
+        /**
+         * ImportLoraDatasetRequest
+         * @description Re-create a dataset from a bundle folder or `.zip` exported by
+         *     another LTX Desktop (must contain `ltxdesktop.json`).
+         */
+        ImportLoraDatasetRequest: {
+            /** Sourcepath */
+            sourcePath: string;
+        };
+        /** ImportLoraRequest */
+        ImportLoraRequest: {
+            /** Description */
+            description?: string | null;
+            /** Exampleprompt */
+            examplePrompt?: string | null;
+            /** Huggingfaceurl */
+            huggingfaceUrl?: string | null;
+            /** Name */
+            name: string;
+            /** Sourcepath */
+            sourcePath: string;
+            /** Triggerword */
+            triggerWord?: string | null;
+            /**
+             * Variant
+             * @enum {string}
+             */
+            variant: "standard" | "video_input_ic_lora";
+        };
+        /** ImportLoraResponse */
+        ImportLoraResponse: {
+            entry: components["schemas"]["LoraInferenceEntryApi"];
+            /** Profilemessage */
+            profileMessage?: string | null;
+            /**
+             * Profilestatus
+             * @default skipped
+             * @enum {string}
+             */
+            profileStatus: "builtin" | "configured" | "skipped" | "failed";
         };
         /** LTXVideoGenerationModelSpecItem */
         LTXVideoGenerationModelSpecItem: {
@@ -921,10 +3374,1622 @@ export interface components {
                 [key: string]: components["schemas"]["LTXVideoGenerationResolutionSpec"];
             };
         };
+        /**
+         * LoadModelFromPathRequest
+         * @description Point the app at an already-downloaded model on disk ("Load from location").
+         *
+         *     `source_path` is a user-chosen folder/file containing the checkpoint; the
+         *     backend links (symlink/junction) or copies it into the expected models-dir
+         *     location so `is_cp_downloaded` flips without a re-download.
+         */
+        LoadModelFromPathRequest: {
+            /**
+             * Cp Id
+             * @enum {string}
+             */
+            cp_id: "ltx-2.3-22b-distilled" | "ltx-2.3-22b-dev" | "ltx-2.3-22b-distilled-lora-384-1.1" | "ltx-2.3-spatial-upscaler-x2-1.0" | "ltx-2.3-22b-ic-lora-union-control-ref0.5" | "dpt-hybrid-midas" | "yolox-l-torchscript" | "dw-ll-ucoco-384-bs5" | "gemma-3-12b-it-qat-q4_0-unquantized" | "z-image-turbo" | "flux-2-klein-9b";
+            /** Sourcepath */
+            sourcePath: string;
+        };
+        /** LoadModelFromPathResponse */
+        LoadModelFromPathResponse: {
+            /**
+             * Cp Id
+             * @enum {string}
+             */
+            cp_id: "ltx-2.3-22b-distilled" | "ltx-2.3-22b-dev" | "ltx-2.3-22b-distilled-lora-384-1.1" | "ltx-2.3-spatial-upscaler-x2-1.0" | "ltx-2.3-22b-ic-lora-union-control-ref0.5" | "dpt-hybrid-midas" | "yolox-l-torchscript" | "dw-ll-ucoco-384-bs5" | "gemma-3-12b-it-qat-q4_0-unquantized" | "z-image-turbo" | "flux-2-klein-9b";
+            /**
+             * Method
+             * @enum {string}
+             */
+            method: "linked" | "copied";
+            /** Path */
+            path: string;
+        };
+        /**
+         * LocalTrainerEligibilityResponse
+         * @description Whether local (WSL2) LoRA training is possible on this machine.
+         *
+         *     Mirrors `LocalTrainerEligibility`; the frontend polls this to decide
+         *     whether to offer the "train locally" provider. `eligible=False` always
+         *     carries a non-empty `reason`; the granular flags let the UI tailor its
+         *     setup guidance (install WSL vs. fix CUDA vs. GPU too small).
+         */
+        LocalTrainerEligibilityResponse: {
+            /** Cudainwsl */
+            cudaInWsl: boolean;
+            /** Eligible */
+            eligible: boolean;
+            /** Gpuname */
+            gpuName?: string | null;
+            /** Reason */
+            reason: string;
+            /** Vramgb */
+            vramGb?: number | null;
+            /** Wslinstalled */
+            wslInstalled: boolean;
+        };
+        /**
+         * LoraAnimateFrameRequest
+         * @description Image-to-video: turn a (usually edited) still into a clip.
+         */
+        LoraAnimateFrameRequest: {
+            /** Imagepath */
+            imagePath: string;
+            /** Prompt */
+            prompt: string;
+        };
+        /**
+         * LoraApplyEditsRequest
+         * @description Render a trimmed/cropped derivative of `sourcePath`.
+         *
+         *     Stateless like probing/captioning: the backend writes the derived
+         *     clip to its managed temp area and returns the path + a fresh probe;
+         *     the frontend persists `localPath = derivedPath`, `sourcePath`, and
+         *     `edits` on the clip via the dataset edit endpoint.
+         */
+        LoraApplyEditsRequest: {
+            edits: components["schemas"]["LoraClipEditsApi"];
+            /** Sourcepath */
+            sourcePath: string;
+        };
+        /** LoraApplyEditsResponse */
+        LoraApplyEditsResponse: {
+            /** Derivedpath */
+            derivedPath: string;
+            probe: components["schemas"]["LoraClipProbeApi"];
+        };
+        /**
+         * LoraCaptionClipRequest
+         * @description Auto-caption one local clip via the desktop-side vision model.
+         *
+         *     Decoupled from any dataset: the frontend captions clips one at a time
+         *     (showing progress) and writes the result back through the dataset edit
+         *     endpoint, so the user can review/tweak before upload.
+         */
+        LoraCaptionClipRequest: {
+            /** Videopath */
+            videoPath: string;
+            /**
+             * Withaudio
+             * @default false
+             */
+            withAudio: boolean;
+        };
+        /** LoraCaptionClipResponse */
+        LoraCaptionClipResponse: {
+            /** Caption */
+            caption: string;
+        };
+        /**
+         * LoraCheckpointArtifactApi
+         * @description One adapter checkpoint downloaded from the remote run output.
+         *
+         *     Paired with validation feed entries by `step`. `localPath` is the
+         *     downloaded file; the frontend's Reveal action opens its folder in the OS
+         *     file manager via `window.electronAPI.showItemInFolder`.
+         */
+        LoraCheckpointArtifactApi: {
+            /**
+             * Createdat
+             * @default
+             */
+            createdAt: string;
+            /** Localpath */
+            localPath: string;
+            /** Step */
+            step: number;
+        };
+        /**
+         * LoraClipEditsApi
+         * @description Non-destructive edit stack for a clip.
+         *
+         *     Applied in order: trim → crop → scale → fps → reverse → speed (audio
+         *     mirrors video unless muted). Stored on the clip so the editor can
+         *     re-open and re-render from the untouched source. A null/false field
+         *     means that step is skipped.
+         */
+        LoraClipEditsApi: {
+            crop?: components["schemas"]["LoraCropApi"] | null;
+            /** Fps */
+            fps?: number | null;
+            /**
+             * Mute
+             * @default false
+             */
+            mute: boolean;
+            /**
+             * Reverse
+             * @default false
+             */
+            reverse: boolean;
+            scale?: components["schemas"]["LoraScaleApi"] | null;
+            /** Speed */
+            speed?: number | null;
+            trim?: components["schemas"]["LoraTrimApi"] | null;
+        };
+        /** LoraClipInput */
+        LoraClipInput: {
+            /**
+             * Caption
+             * @default
+             */
+            caption: string;
+            /** Deletedat */
+            deletedAt?: string | null;
+            /** Durationseconds */
+            durationSeconds?: number | null;
+            edits?: components["schemas"]["LoraClipEditsApi"] | null;
+            /** Id */
+            id?: string | null;
+            /** Localpath */
+            localPath: string;
+            /**
+             * Origin
+             * @default imported
+             * @enum {string}
+             */
+            origin: "imported" | "gen_space" | "ai_derived";
+            /** Posterpath */
+            posterPath?: string | null;
+            probe?: components["schemas"]["LoraClipProbeApi"] | null;
+            /** Referencepath */
+            referencePath?: string | null;
+            /** Referencepaths */
+            referencePaths?: string[];
+            /** Sourcepath */
+            sourcePath?: string | null;
+            /** Spritepath */
+            spritePath?: string | null;
+            /** Spritetiles */
+            spriteTiles?: number | null;
+            /** Triage */
+            triage?: ("keep" | "reject" | "holdout") | null;
+        };
+        /** LoraClipJobApi */
+        LoraClipJobApi: {
+            /** Error */
+            error?: string | null;
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "sprite";
+            /** Posterpath */
+            posterPath?: string | null;
+            /** Sourcepath */
+            sourcePath: string;
+            /** Spritepath */
+            spritePath?: string | null;
+            /** Spritetiles */
+            spriteTiles?: number | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "running" | "completed" | "failed";
+        };
+        /** LoraClipJobsResponse */
+        LoraClipJobsResponse: {
+            /** Jobs */
+            jobs: components["schemas"]["LoraClipJobApi"][];
+        };
+        /**
+         * LoraClipProbeApi
+         * @description Measured facts about a clip (from the desktop ffmpeg probe).
+         */
+        LoraClipProbeApi: {
+            /** Durationseconds */
+            durationSeconds: number;
+            /** Fps */
+            fps: number;
+            /** Framecount */
+            frameCount: number;
+            /** Hasaudio */
+            hasAudio: boolean;
+            /** Height */
+            height: number;
+            /** Videocodec */
+            videoCodec?: string | null;
+            /** Width */
+            width: number;
+        };
+        /**
+         * LoraConnectRunpodResponse
+         * @description Result of the one-click RunPod connect probe.
+         *
+         *     On success the UI populates the GPU picker, explicitly selected volume, and
+         *     existing pods. Connecting never creates paid storage.
+         */
+        LoraConnectRunpodResponse: {
+            /** Activevolumeid */
+            activeVolumeId?: string | null;
+            /**
+             * Cacheenabled
+             * @default false
+             */
+            cacheEnabled: boolean;
+            /**
+             * Datacenter
+             * @default
+             */
+            datacenter: string;
+            /** Estimatedmodeldownloadbytes */
+            estimatedModelDownloadBytes?: number | null;
+            /** Gpus */
+            gpus?: components["schemas"]["LoraGpuOfferApi"][];
+            /** Message */
+            message: string;
+            /** Ok */
+            ok: boolean;
+            /** Pods */
+            pods?: components["schemas"]["LoraPodInfoApi"][];
+            /** Regionhealth */
+            regionHealth?: components["schemas"]["LoraRegionHealthApi"][];
+            /**
+             * Requiresvolumeselection
+             * @default false
+             */
+            requiresVolumeSelection: boolean;
+            /**
+             * Savedmodelreadiness
+             * @default unknown
+             * @enum {string}
+             */
+            savedModelReadiness: "ready" | "missing" | "unknown";
+            /** Volumes */
+            volumes?: components["schemas"]["LoraNetworkVolumeApi"][];
+        };
+        /** LoraCostEstimateRequest */
+        LoraCostEstimateRequest: {
+            /**
+             * Clipcount
+             * @default 1
+             */
+            clipCount: number;
+            config?: components["schemas"]["LoraTrainingConfigApi"];
+            /** Estimatedmodeldownloadbytes */
+            estimatedModelDownloadBytes?: number | null;
+            /**
+             * Gpupriceperhr
+             * @default 0
+             */
+            gpuPricePerHr: number;
+            /**
+             * Gputype
+             * @default
+             */
+            gpuType: string;
+            /**
+             * Gpuvramgb
+             * @default 0
+             */
+            gpuVramGb: number;
+            /**
+             * Idletimeoutminutes
+             * @default 10
+             */
+            idleTimeoutMinutes: number;
+            /**
+             * Mode
+             * @default standard
+             * @enum {string}
+             */
+            mode: "standard" | "ic_lora";
+            /**
+             * Preprocessed
+             * @default false
+             */
+            preprocessed: boolean;
+            /**
+             * Resolutionbuckets
+             * @default 768x448x49
+             */
+            resolutionBuckets: string;
+            /**
+             * Storagereadiness
+             * @default unknown
+             * @enum {string}
+             */
+            storageReadiness: "ready" | "missing" | "unknown";
+            /**
+             * Storagesizegb
+             * @default 250
+             */
+            storageSizeGb: number;
+            /**
+             * Totalclipseconds
+             * @default 0
+             */
+            totalClipSeconds: number;
+            /**
+             * Withaudio
+             * @default false
+             */
+            withAudio: boolean;
+        };
+        /** LoraCostEstimateResponse */
+        LoraCostEstimateResponse: {
+            /**
+             * Confidence
+             * @enum {string}
+             */
+            confidence: "low" | "medium" | "high";
+            /** Downloadbytes */
+            downloadBytes: number | null;
+            /** Highgpucost */
+            highGpuCost: number;
+            /** Highseconds */
+            highSeconds: number;
+            /** Lowgpucost */
+            lowGpuCost: number;
+            /** Lowseconds */
+            lowSeconds: number;
+            /** Matchedhistorycount */
+            matchedHistoryCount: number;
+            /** Phases */
+            phases: components["schemas"]["LoraEstimatePhaseApi"][];
+            /** Storagemonthlycost */
+            storageMonthlyCost: number;
+        };
+        /** LoraCreateNetworkVolumeRequest */
+        LoraCreateNetworkVolumeRequest: {
+            /** Datacenterid */
+            datacenterId?: string | null;
+            /** Sizegb */
+            sizeGb?: number | null;
+        };
+        /**
+         * LoraCropApi
+         * @description Pixel crop rectangle, applied after trim.
+         */
+        LoraCropApi: {
+            /** Height */
+            height: number;
+            /** Width */
+            width: number;
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
+        };
+        /** LoraDatasetApi */
+        LoraDatasetApi: {
+            /** Archivedat */
+            archivedAt?: string | null;
+            /** Cachevolumeid */
+            cacheVolumeId?: string | null;
+            /**
+             * Cancelrequested
+             * @default false
+             */
+            cancelRequested: boolean;
+            /** Clips */
+            clips: components["schemas"]["LoraDatasetClipApi"][];
+            /** Createdat */
+            createdAt: string;
+            /** Error */
+            error?: string | null;
+            /** Finalactivityat */
+            finalActivityAt?: string | null;
+            /** Folderid */
+            folderId?: string | null;
+            /** Id */
+            id: string;
+            /** Keepaliveuntil */
+            keepAliveUntil?: string | null;
+            /** Lastpodid */
+            lastPodId?: string | null;
+            /** Name */
+            name: string;
+            /** Originatingprojectid */
+            originatingProjectId?: string | null;
+            pendingPipeline?: components["schemas"]["LoraPendingPipelineApi"] | null;
+            /** Releaseattemptedat */
+            releaseAttemptedAt?: string | null;
+            /** Releaseerror */
+            releaseError?: string | null;
+            /** Releasestatus */
+            releaseStatus?: ("scheduled" | "releasing" | "released" | "failed") | null;
+            /** Remotedatasetdir */
+            remoteDatasetDir?: string | null;
+            runpodSelection?: components["schemas"]["RunpodSelectionApi"] | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "uploading" | "uploaded" | "upload_failed" | "cancelled" | "gpu_selection_required";
+            /** Statusdetail */
+            statusDetail?: string | null;
+            /** Statusetaseconds */
+            statusEtaSeconds?: number | null;
+            /** Statuspercent */
+            statusPercent?: number | null;
+            target?: components["schemas"]["LoraTargetHandleApi"] | null;
+            /** Triggerword */
+            triggerWord?: string | null;
+            /**
+             * Type
+             * @default standard
+             * @enum {string}
+             */
+            type: "standard" | "ic_lora";
+            /** Updatedat */
+            updatedAt?: string | null;
+            /**
+             * Workspacepolicy
+             * @default primary_cache
+             * @enum {string}
+             */
+            workspacePolicy: "primary_cache" | "ephemeral_any_region";
+        };
+        /** LoraDatasetClipApi */
+        LoraDatasetClipApi: {
+            /**
+             * Caption
+             * @default
+             */
+            caption: string;
+            /** Deletedat */
+            deletedAt?: string | null;
+            /** Durationseconds */
+            durationSeconds?: number | null;
+            edits?: components["schemas"]["LoraClipEditsApi"] | null;
+            /** Id */
+            id: string;
+            /** Localpath */
+            localPath: string;
+            /**
+             * Origin
+             * @default imported
+             * @enum {string}
+             */
+            origin: "imported" | "gen_space" | "ai_derived";
+            /** Posterpath */
+            posterPath?: string | null;
+            probe?: components["schemas"]["LoraClipProbeApi"] | null;
+            /** Referencepath */
+            referencePath?: string | null;
+            /** Referencepaths */
+            referencePaths?: string[];
+            /** Sourcepath */
+            sourcePath?: string | null;
+            /** Spritepath */
+            spritePath?: string | null;
+            /** Spritetiles */
+            spriteTiles?: number | null;
+            /** Triage */
+            triage?: ("keep" | "reject" | "holdout") | null;
+        };
+        /** LoraDatasetsResponse */
+        LoraDatasetsResponse: {
+            /** Datasets */
+            datasets: components["schemas"]["LoraDatasetApi"][];
+            /** Folders */
+            folders: components["schemas"]["LoraFolderApi"][];
+            /** Schemaversion */
+            schemaVersion: number;
+        };
+        /** LoraDerivationJobApi */
+        LoraDerivationJobApi: {
+            /**
+             * Caption
+             * @default
+             */
+            caption: string;
+            /** Createdat */
+            createdAt: string;
+            /** Datasetid */
+            datasetId?: string | null;
+            /** Derivedpath */
+            derivedPath?: string | null;
+            /**
+             * Direction
+             * @default target
+             * @enum {string}
+             */
+            direction: "target" | "reference" | "variant" | "frame_edit";
+            /** Driverpath */
+            driverPath: string;
+            /**
+             * Editengine
+             * @default fal
+             * @enum {string}
+             */
+            editEngine: "fal" | "klein";
+            /** Editedframepath */
+            editedFramePath?: string | null;
+            /**
+             * Engine
+             * @enum {string}
+             */
+            engine: "ltx_local" | "kling" | "kling_o3";
+            /** Error */
+            error?: string | null;
+            /** Id */
+            id: string;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+            probe?: components["schemas"]["LoraClipProbeApi"] | null;
+            /** Referencepath */
+            referencePath?: string | null;
+            /**
+             * Requirereview
+             * @default false
+             */
+            requireReview: boolean;
+            /** Sourceclipid */
+            sourceClipId?: string | null;
+            /** Sourceframepath */
+            sourceFramePath?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "editing" | "review" | "approved" | "generating" | "completed" | "failed" | "cancelled";
+            /** Updatedat */
+            updatedAt?: string | null;
+        };
+        /** LoraDerivationJobsResponse */
+        LoraDerivationJobsResponse: {
+            /** Jobs */
+            jobs: components["schemas"]["LoraDerivationJobApi"][];
+        };
+        /**
+         * LoraDerivedClipResponse
+         * @description Result of an AI op that produces a new clip (animate / restyle).
+         */
+        LoraDerivedClipResponse: {
+            /** Derivedpath */
+            derivedPath: string;
+            probe: components["schemas"]["LoraClipProbeApi"];
+        };
+        /**
+         * LoraEditFrameRequest
+         * @description Edit a frame of a clip with Nano Banana (Fal) or FLUX.2 [klein] 9B (local).
+         *
+         *     Extracts the frame at `timeSeconds`, applies the prompt, and returns
+         *     the edited still's path so the frontend can preview it or feed it to
+         *     image-to-video. `engine` selects the editor: "fal" (default, Nano Banana)
+         *     uses `model` (falls back to the saved Nano Banana setting when omitted);
+         *     "klein" runs the local FLUX.2 [klein] 9B edit pipeline and ignores `model`.
+         */
+        LoraEditFrameRequest: {
+            /**
+             * Engine
+             * @default fal
+             * @enum {string}
+             */
+            engine: "fal" | "klein";
+            /** Model */
+            model?: ("nano-banana" | "nano-banana-2" | "nano-banana-pro") | null;
+            /** Prompt */
+            prompt: string;
+            /** Sourcepath */
+            sourcePath: string;
+            /**
+             * Timeseconds
+             * @default 0
+             */
+            timeSeconds: number;
+        };
+        /** LoraEditFrameResponse */
+        LoraEditFrameResponse: {
+            /** Framepath */
+            framePath: string;
+        };
+        /**
+         * LoraEnqueueClipJobsRequest
+         * @description Enqueue background prep jobs for a batch of source clips.
+         *
+         *     Stateless w.r.t. datasets: jobs are keyed by source path so the
+         *     curation gallery can analyze clips before any dataset is saved. The
+         *     frontend polls `GET /api/lora/clip-jobs` and merges results onto its
+         *     in-memory clips.
+         */
+        LoraEnqueueClipJobsRequest: {
+            /**
+             * Kind
+             * @default sprite
+             * @constant
+             */
+            kind: "sprite";
+            /** Sourcepaths */
+            sourcePaths: string[];
+        };
+        /** LoraEstimatePhaseApi */
+        LoraEstimatePhaseApi: {
+            /** Highseconds */
+            highSeconds: number;
+            /** Lowseconds */
+            lowSeconds: number;
+            /**
+             * Phase
+             * @enum {string}
+             */
+            phase: "provision" | "upload" | "preprocess" | "train" | "idle";
+        };
+        /** LoraFolderApi */
+        LoraFolderApi: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Parentid */
+            parentId?: string | null;
+        };
+        /** LoraGenerateCancelledResponse */
+        LoraGenerateCancelledResponse: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "cancelled";
+        };
+        /** LoraGenerateCompleteResponse */
+        LoraGenerateCompleteResponse: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "complete";
+            /** Videopath */
+            videoPath: string;
+        };
+        /**
+         * LoraGpuOfferApi
+         * @description A GPU type the connected RunPod account can allocate.
+         */
+        LoraGpuOfferApi: {
+            /** Activeregionavailable */
+            activeRegionAvailable?: boolean | null;
+            /**
+             * Available
+             * @default true
+             */
+            available: boolean;
+            /** Availableelsewhere */
+            availableElsewhere?: boolean | null;
+            /** Bestavailableregion */
+            bestAvailableRegion?: string | null;
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /** Memorygb */
+            memoryGb: number;
+            /** Priceperhr */
+            pricePerHr?: number | null;
+            /**
+             * Recommended
+             * @default false
+             */
+            recommended: boolean;
+        };
+        /**
+         * LoraGpuStatusApi
+         * @description Live GPU telemetry snapshot for the GPU-status panel.
+         */
+        LoraGpuStatusApi: {
+            /** Gpuutilpct */
+            gpuUtilPct: number;
+            /** Memutilpct */
+            memUtilPct: number;
+            /** Name */
+            name: string;
+            /** Tempc */
+            tempC?: number | null;
+            /** Updatedat */
+            updatedAt: string;
+            /** Vramtotalmb */
+            vramTotalMb: number;
+            /** Vramusedmb */
+            vramUsedMb: number;
+        };
+        /** LoraInferenceEntryApi */
+        LoraInferenceEntryApi: {
+            /** Available */
+            available: boolean;
+            /** Conditioningtypes */
+            conditioningTypes: ("canny" | "depth" | "pose")[];
+            /** Createdat */
+            createdAt?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Examplemediatype */
+            exampleMediaType?: ("image" | "video") | null;
+            /** Filesizebytes */
+            fileSizeBytes?: number | null;
+            /** Huggingfaceurl */
+            huggingfaceUrl?: string | null;
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "official_union" | "user_trained" | "imported";
+            /** Localpath */
+            localPath?: string | null;
+            /** Name */
+            name: string;
+            /** Prompttemplate */
+            promptTemplate?: string | null;
+            /**
+             * Prompttemplatecustomized
+             * @default false
+             */
+            promptTemplateCustomized: boolean;
+            /** Sourcetrainingid */
+            sourceTrainingId?: string | null;
+            /** Triggerword */
+            triggerWord?: string | null;
+            /**
+             * Variant
+             * @enum {string}
+             */
+            variant: "standard" | "union_control" | "video_input_ic_lora";
+        };
+        /** LoraInferenceRegistryResponseApi */
+        LoraInferenceRegistryResponseApi: {
+            /** Entries */
+            entries: components["schemas"]["LoraInferenceEntryApi"][];
+        };
+        /** LoraJobLogsResponse */
+        LoraJobLogsResponse: {
+            /** Lines */
+            lines: string[];
+        };
+        /**
+         * LoraKeepAliveRequest
+         * @description Extend one app-owned workspace without changing the global idle policy.
+         */
+        LoraKeepAliveRequest: {
+            /**
+             * Minutes
+             * @default 30
+             */
+            minutes: number;
+        };
+        /**
+         * LoraMotionEditRequest
+         * @description Motion-locked paired generation for edit datasets.
+         *
+         *     Uses the original clip as the motion driver and an edited still
+         *     (e.g. a Nano-Banana-edited first frame) as the content anchor, so the
+         *     result keeps the original's motion but shows the edited content —
+         *     yielding aligned (original ↔ edited) pairs for control LoRA training.
+         *
+         *     `engine` picks the Fal backend:
+         *       - "ltx_v2v": LTX-2 video-to-video with the edited frame as the first
+         *         frame; `videoStrength` trades motion/structure fidelity (high) for
+         *         freedom to adopt the edited content (low).
+         *       - "kling_motion": Kling motion-control — transfer the original's
+         *         motion onto the edited character image; `characterOrientation`
+         *         selects "video" (full body + camera) or "image" (preserve framing).
+         *       - "kling_o3": Kling O3 video-to-video edit — re-render the source clip
+         *         under `prompt`, using the edited still as an appearance/style
+         *         reference (@Image1). `keepAudio` preserves the source audio.
+         */
+        LoraMotionEditRequest: {
+            /**
+             * Characterorientation
+             * @default video
+             * @enum {string}
+             */
+            characterOrientation: "video" | "image";
+            /**
+             * Engine
+             * @default ltx_v2v
+             * @enum {string}
+             */
+            engine: "ltx_v2v" | "kling_motion" | "kling_o3";
+            /**
+             * Keepaudio
+             * @default true
+             */
+            keepAudio: boolean;
+            /**
+             * Prompt
+             * @default
+             */
+            prompt: string;
+            /** Referenceimagepath */
+            referenceImagePath: string;
+            /** Sourcepath */
+            sourcePath: string;
+            /**
+             * Videostrength
+             * @default 0.5
+             */
+            videoStrength: number;
+        };
+        /** LoraNetworkVolumeActionResponse */
+        LoraNetworkVolumeActionResponse: {
+            /** Message */
+            message: string;
+            /** Ok */
+            ok: boolean;
+            /** Previousvolumeid */
+            previousVolumeId?: string | null;
+            /**
+             * Provisioningrequired
+             * @default false
+             */
+            provisioningRequired: boolean;
+            volume?: components["schemas"]["LoraNetworkVolumeApi"] | null;
+        };
+        /** LoraNetworkVolumeApi */
+        LoraNetworkVolumeApi: {
+            /**
+             * Active
+             * @default false
+             */
+            active: boolean;
+            /** Availablegpuids */
+            availableGpuIds?: string[];
+            /**
+             * Createdbyapp
+             * @default false
+             */
+            createdByApp: boolean;
+            /**
+             * Datacenterid
+             * @default
+             */
+            datacenterId: string;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Qualifyinggpuavailable */
+            qualifyingGpuAvailable?: boolean | null;
+            /**
+             * Regionhealth
+             * @default unknown
+             * @enum {string}
+             */
+            regionHealth: "healthy" | "no_stock" | "unknown";
+            /**
+             * Savedmodelreadiness
+             * @default unknown
+             * @enum {string}
+             */
+            savedModelReadiness: "ready" | "missing" | "unknown";
+            /** Sizegb */
+            sizeGb: number;
+        };
+        /** LoraPendingPipelineApi */
+        LoraPendingPipelineApi: {
+            /** Autocaption */
+            autoCaption: boolean;
+            /**
+             * Captionertype
+             * @enum {string}
+             */
+            captionerType: "qwen_omni" | "gemini_flash";
+            config: components["schemas"]["LoraTrainingConfigApi"];
+            /** Description */
+            description?: string | null;
+            /** Name */
+            name: string;
+            /** Resolutionbuckets */
+            resolutionBuckets: string;
+            /** Withaudio */
+            withAudio: boolean;
+        };
+        /**
+         * LoraPodActionResponse
+         * @description Result of a lifecycle action on a RunPod pod (stop/resume).
+         *
+         *     Same shape as `LoraTerminatePodResponse`; a separate type so the OpenAPI
+         *     schema documents stop/resume endpoints distinctly from terminate. On
+         *     failure `ok` is False and `message` explains why (e.g. bad key).
+         */
+        LoraPodActionResponse: {
+            /** Message */
+            message: string;
+            /** Ok */
+            ok: boolean;
+        };
+        /**
+         * LoraPodInfoApi
+         * @description A pod already on the connected RunPod account.
+         */
+        LoraPodInfoApi: {
+            /** Costperhr */
+            costPerHr?: number | null;
+            /**
+             * Createdbyapp
+             * @default false
+             */
+            createdByApp: boolean;
+            /**
+             * Desiredstatus
+             * @default
+             */
+            desiredStatus: string;
+            /** Gpu */
+            gpu: string;
+            /** Id */
+            id: string;
+            /** Laststartedat */
+            lastStartedAt?: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Running
+             * @default false
+             */
+            running: boolean;
+            /** Status */
+            status: string;
+            /** Uptimeseconds */
+            uptimeSeconds?: number | null;
+        };
+        /** LoraPreprocessedApi */
+        LoraPreprocessedApi: {
+            /** Autocaption */
+            autoCaption: boolean;
+            /**
+             * Cancelrequested
+             * @default false
+             */
+            cancelRequested: boolean;
+            /**
+             * Captionertype
+             * @enum {string}
+             */
+            captionerType: "qwen_omni" | "gemini_flash";
+            /** Completedat */
+            completedAt?: string | null;
+            /** Createdat */
+            createdAt: string;
+            /** Datasetid */
+            datasetId: string;
+            /** Effectiveresolutionbuckets */
+            effectiveResolutionBuckets?: string | null;
+            /** Error */
+            error?: string | null;
+            /** Id */
+            id: string;
+            /** Remoteprecomputeddir */
+            remotePrecomputedDir?: string | null;
+            /** Resolutionbuckets */
+            resolutionBuckets: string;
+            /** Startedat */
+            startedAt?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "captioning" | "preprocessing" | "ready" | "failed" | "cancelled";
+            /** Statusdetail */
+            statusDetail?: string | null;
+            target?: components["schemas"]["LoraTargetHandleApi"] | null;
+            /** Withaudio */
+            withAudio: boolean;
+        };
+        /** LoraPreprocessedResponse */
+        LoraPreprocessedResponse: {
+            /** Items */
+            items: components["schemas"]["LoraPreprocessedApi"][];
+            /** Schemaversion */
+            schemaVersion: number;
+        };
+        /**
+         * LoraProbeClipRequest
+         * @description Measure one local clip before it's added to a dataset.
+         *
+         *     Like captioning, this is decoupled from any dataset: the frontend
+         *     probes a clip as the user adds it, shows the badges/warnings, and
+         *     persists the result through the dataset create/edit endpoints.
+         */
+        LoraProbeClipRequest: {
+            /** Videopath */
+            videoPath: string;
+        };
+        /** LoraProbeClipResponse */
+        LoraProbeClipResponse: {
+            probe: components["schemas"]["LoraClipProbeApi"];
+        };
+        /** LoraQueuePayload */
+        LoraQueuePayload: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "lora";
+            /** Request */
+            request: components["schemas"]["LoraStandardGenerateRequest"] | components["schemas"]["LoraUnionControlGenerateRequest"] | components["schemas"]["LoraVideoInputIcLoraGenerateRequest"];
+        };
+        /** LoraRegionHealthApi */
+        LoraRegionHealthApi: {
+            /** Availablegpuids */
+            availableGpuIds?: string[];
+            /** Datacenterid */
+            datacenterId: string;
+            /** Qualifyinggpuavailable */
+            qualifyingGpuAvailable: boolean;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "healthy" | "no_stock" | "unknown";
+        };
+        /** LoraRelocateNetworkVolumeRequest */
+        LoraRelocateNetworkVolumeRequest: {
+            /** Datacenterid */
+            datacenterId: string;
+            /** Sizegb */
+            sizeGb?: number | null;
+        };
+        /**
+         * LoraRestyleClipRequest
+         * @description Video-to-video: re-render an existing clip under a text prompt.
+         */
+        LoraRestyleClipRequest: {
+            /** Prompt */
+            prompt: string;
+            /** Sourcepath */
+            sourcePath: string;
+        };
+        /**
+         * LoraScaleApi
+         * @description Target resolution, applied after crop (bucket-snap / normalize).
+         */
+        LoraScaleApi: {
+            /** Height */
+            height: number;
+            /** Width */
+            width: number;
+        };
+        /** LoraSceneApi */
+        LoraSceneApi: {
+            /** Endseconds */
+            endSeconds: number;
+            /** Localpath */
+            localPath: string;
+            probe: components["schemas"]["LoraClipProbeApi"];
+            /** Startseconds */
+            startSeconds: number;
+        };
+        /**
+         * LoraSceneSplitRequest
+         * @description Detect scene cuts in a long clip and render each segment.
+         *
+         *     `threshold` is the ffmpeg scene score (0.1–0.9); lower = more cuts.
+         */
+        LoraSceneSplitRequest: {
+            /** Sourcepath */
+            sourcePath: string;
+            /**
+             * Threshold
+             * @default 0.4
+             */
+            threshold: number;
+        };
+        /** LoraSceneSplitResponse */
+        LoraSceneSplitResponse: {
+            /** Scenes */
+            scenes: components["schemas"]["LoraSceneApi"][];
+        };
+        /** LoraSelectNetworkVolumeRequest */
+        LoraSelectNetworkVolumeRequest: {
+            /** Volumeid */
+            volumeId: string;
+        };
+        /** LoraStandardGenerateRequest */
+        LoraStandardGenerateRequest: {
+            /** Loraid */
+            loraId: string;
+            /**
+             * Lorascale
+             * @default 1
+             */
+            loraScale: number;
+            request: components["schemas"]["GenerateVideoRequest"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            variant: "standard";
+        };
+        /** LoraTargetHandleApi */
+        LoraTargetHandleApi: {
+            /** Podid */
+            podId?: string | null;
+            /**
+             * Provider
+             * @enum {string}
+             */
+            provider: "runpod" | "local";
+            /** Remotejobid */
+            remoteJobId?: string | null;
+        };
+        /** LoraTerminatePodResponse */
+        LoraTerminatePodResponse: {
+            /** Message */
+            message: string;
+            /** Ok */
+            ok: boolean;
+        };
+        /** LoraTestConnectionRequest */
+        LoraTestConnectionRequest: {
+            /**
+             * Provider
+             * @default runpod
+             * @enum {string}
+             */
+            provider: "runpod" | "local";
+        };
+        /** LoraTestConnectionResponse */
+        LoraTestConnectionResponse: {
+            /** Message */
+            message: string;
+            /** Ok */
+            ok: boolean;
+        };
+        /** LoraTrainingConfigApi */
+        LoraTrainingConfigApi: {
+            /**
+             * Alpha
+             * @default 32
+             */
+            alpha: number;
+            /**
+             * Batchsize
+             * @default 1
+             */
+            batchSize: number;
+            /**
+             * Checkpointinterval
+             * @default 250
+             */
+            checkpointInterval: number;
+            /**
+             * Checkpointkeeplastn
+             * @default 3
+             */
+            checkpointKeepLastN: number;
+            /**
+             * Checkpointprecision
+             * @default bfloat16
+             */
+            checkpointPrecision: string;
+            /**
+             * Dropout
+             * @default 0
+             */
+            dropout: number;
+            /**
+             * Enablegradientcheckpointing
+             * @default true
+             */
+            enableGradientCheckpointing: boolean;
+            /** Firstframeconditioningp */
+            firstFrameConditioningP?: number | null;
+            /**
+             * Gradientaccumulationsteps
+             * @default 1
+             */
+            gradientAccumulationSteps: number;
+            /** Hubmodelid */
+            hubModelId?: string | null;
+            /**
+             * Learningrate
+             * @default 0.0001
+             */
+            learningRate: number;
+            /** Loadcheckpoint */
+            loadCheckpoint?: string | null;
+            /** Loadtextencoderin8Bit */
+            loadTextEncoderIn8bit?: boolean | null;
+            /**
+             * Maxgradnorm
+             * @default 1
+             */
+            maxGradNorm: number;
+            /**
+             * Mixedprecisionmode
+             * @default bf16
+             */
+            mixedPrecisionMode: string;
+            /**
+             * Numdataloaderworkers
+             * @default 2
+             */
+            numDataloaderWorkers: number;
+            /** Offloadoptimizerduringvalidation */
+            offloadOptimizerDuringValidation?: boolean | null;
+            /** Optimizertype */
+            optimizerType?: string | null;
+            /**
+             * Preset
+             * @default standard
+             * @enum {string}
+             */
+            preset: "standard" | "low_vram";
+            /**
+             * Pushtohub
+             * @default false
+             */
+            pushToHub: boolean;
+            /** Quantization */
+            quantization?: string | null;
+            /**
+             * Rank
+             * @default 32
+             */
+            rank: number;
+            /**
+             * Schedulertype
+             * @default linear
+             */
+            schedulerType: string;
+            /**
+             * Seed
+             * @default 42
+             */
+            seed: number;
+            /** Skipinitialvalidation */
+            skipInitialValidation?: boolean | null;
+            /**
+             * Steps
+             * @default 2000
+             */
+            steps: number;
+            /** Stgblocks */
+            stgBlocks?: number[];
+            /**
+             * Stgmode
+             * @default stg_av
+             */
+            stgMode: string;
+            /**
+             * Stgscale
+             * @default 1
+             */
+            stgScale: number;
+            /** Targetmodules */
+            targetModules?: string[];
+            /**
+             * Timestepsamplingmode
+             * @default shifted_logit_normal
+             */
+            timestepSamplingMode: string;
+            /** Triggerword */
+            triggerWord?: string | null;
+            /**
+             * Validationframerate
+             * @default 25
+             */
+            validationFrameRate: number;
+            /**
+             * Validationguidancescale
+             * @default 4
+             */
+            validationGuidanceScale: number;
+            /**
+             * Validationinferencesteps
+             * @default 30
+             */
+            validationInferenceSteps: number;
+            /**
+             * Validationinterval
+             * @default 250
+             */
+            validationInterval: number;
+            /**
+             * Validationnegativeprompt
+             * @default worst quality, inconsistent motion, blurry, jittery, distorted
+             */
+            validationNegativePrompt: string;
+            /** Validationprompts */
+            validationPrompts?: string[];
+            /**
+             * Validationseed
+             * @default 42
+             */
+            validationSeed: number;
+            /**
+             * Validationvideoframes
+             * @default 49
+             */
+            validationVideoFrames: number;
+            /**
+             * Validationvideoheight
+             * @default 576
+             */
+            validationVideoHeight: number;
+            /**
+             * Validationvideowidth
+             * @default 576
+             */
+            validationVideoWidth: number;
+            /**
+             * Wandbenabled
+             * @default false
+             */
+            wandbEnabled: boolean;
+            /**
+             * Withaudio
+             * @default false
+             */
+            withAudio: boolean;
+        };
+        /** LoraTrainingJobApi */
+        LoraTrainingJobApi: {
+            /** Archivedat */
+            archivedAt?: string | null;
+            /** Attributedcost */
+            attributedCost?: number | null;
+            /** Attributedseconds */
+            attributedSeconds?: number | null;
+            /**
+             * Cancelrequested
+             * @default false
+             */
+            cancelRequested: boolean;
+            /** Capturedhourlyrate */
+            capturedHourlyRate?: number | null;
+            /** Checkpoints */
+            checkpoints?: components["schemas"]["LoraCheckpointArtifactApi"][];
+            /** Completedat */
+            completedAt?: string | null;
+            /** Computerateperhr */
+            computeRatePerHr?: number | null;
+            config: components["schemas"]["LoraTrainingConfigApi"];
+            /** Createdat */
+            createdAt: string;
+            /** Currentstep */
+            currentStep?: number | null;
+            /** Description */
+            description?: string | null;
+            /** Error */
+            error?: string | null;
+            /** Etaseconds */
+            etaSeconds?: number | null;
+            /** Firststepat */
+            firstStepAt?: string | null;
+            gpuStatus?: components["schemas"]["LoraGpuStatusApi"] | null;
+            /**
+             * Gputype
+             * @default
+             */
+            gpuType: string;
+            /**
+             * Gpuvramgb
+             * @default 0
+             */
+            gpuVramGb: number;
+            /** Id */
+            id: string;
+            /** Lastpodid */
+            lastPodId?: string | null;
+            /** Locallorapath */
+            localLoraPath?: string | null;
+            /** Name */
+            name: string;
+            /** Podpreparationendedat */
+            podPreparationEndedAt?: string | null;
+            /** Podpreparationstartedat */
+            podPreparationStartedAt?: string | null;
+            /** Preprocessedid */
+            preprocessedId: string;
+            /**
+             * Provider
+             * @enum {string}
+             */
+            provider: "runpod" | "local";
+            /** Remoteoutputdir */
+            remoteOutputDir?: string | null;
+            runpodSelection?: components["schemas"]["RunpodSelectionApi"] | null;
+            /** Startedat */
+            startedAt?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "running" | "completed" | "failed" | "cancelled" | "gpu_selection_required";
+            /** Statusdetail */
+            statusDetail?: string | null;
+            target?: components["schemas"]["LoraTargetHandleApi"] | null;
+            /** Totalsteps */
+            totalSteps?: number | null;
+            /** Trainingsetupendedat */
+            trainingSetupEndedAt?: string | null;
+            /** Trainingsetupstartedat */
+            trainingSetupStartedAt?: string | null;
+            /** Trainingstepsendedat */
+            trainingStepsEndedAt?: string | null;
+            /** Trainingstepsstartedat */
+            trainingStepsStartedAt?: string | null;
+            /** Validationfeed */
+            validationFeed?: components["schemas"]["LoraValidationFeedItemApi"][];
+            /** Workloadbillingendedat */
+            workloadBillingEndedAt?: string | null;
+            /** Workloadbillingstartedat */
+            workloadBillingStartedAt?: string | null;
+        };
+        /** LoraTrainingProfileApi */
+        LoraTrainingProfileApi: {
+            /**
+             * Autorecommended
+             * @default false
+             */
+            autoRecommended: boolean;
+            /**
+             * Builtin
+             * @default false
+             */
+            builtin: boolean;
+            config: components["schemas"]["LoraTrainingConfigApi"];
+            /** Createdat */
+            createdAt: string;
+            /** Datasettypes */
+            datasetTypes?: ("standard" | "ic_lora")[];
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Id */
+            id: string;
+            /** Minvramgb */
+            minVramGb?: number | null;
+            /** Name */
+            name: string;
+            /** Updatedat */
+            updatedAt: string;
+        };
+        /** LoraTrainingProfilesResponse */
+        LoraTrainingProfilesResponse: {
+            /** Profiles */
+            profiles: components["schemas"]["LoraTrainingProfileApi"][];
+            /** Schemaversion */
+            schemaVersion: number;
+        };
+        /** LoraTrainingResponse */
+        LoraTrainingResponse: {
+            /** Items */
+            items: components["schemas"]["LoraTrainingJobApi"][];
+            /** Schemaversion */
+            schemaVersion: number;
+        };
+        /**
+         * LoraTrimApi
+         * @description Keep only [startSeconds, endSeconds) of the source timeline.
+         */
+        LoraTrimApi: {
+            /** Endseconds */
+            endSeconds: number;
+            /** Startseconds */
+            startSeconds: number;
+        };
+        /** LoraUnionControlGenerateRequest */
+        LoraUnionControlGenerateRequest: {
+            /** Loraid */
+            loraId: string;
+            request: components["schemas"]["IcLoraGenerateRequest"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            variant: "union_control";
+        };
+        /**
+         * LoraValidationFeedItemApi
+         * @description One generated validation sample in the training-results feed.
+         */
+        LoraValidationFeedItemApi: {
+            /**
+             * Createdat
+             * @default
+             */
+            createdAt: string;
+            /**
+             * Mediatype
+             * @default video
+             * @enum {string}
+             */
+            mediaType: "video" | "audio";
+            /** Mediaurl */
+            mediaUrl: string;
+            /**
+             * Prompt
+             * @default
+             */
+            prompt: string;
+            /** Referencemediaurl */
+            referenceMediaUrl?: string | null;
+            /** Sampleindex */
+            sampleIndex: number;
+            /**
+             * Source
+             * @default prompt
+             * @enum {string}
+             */
+            source: "prompt" | "holdout";
+            /** Step */
+            step: number;
+        };
+        /** LoraVideoInputIcLoraGenerateRequest */
+        LoraVideoInputIcLoraGenerateRequest: {
+            /**
+             * Conditioningstrength
+             * @default 1
+             */
+            conditioningStrength: number;
+            /** Duration */
+            duration?: number | null;
+            /** Loraid */
+            loraId: string;
+            /**
+             * Lorascale
+             * @default 1
+             */
+            loraScale: number;
+            /**
+             * Negativeprompt
+             * @default
+             */
+            negativePrompt: string;
+            /**
+             * Preserveaudio
+             * @default false
+             */
+            preserveAudio: boolean;
+            /** Prompt */
+            prompt: string;
+            /**
+             * Refine
+             * @default false
+             */
+            refine: boolean;
+            /**
+             * Resolution
+             * @default 540p
+             * @enum {string}
+             */
+            resolution: "540p" | "720p" | "1080p";
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            variant: "video_input_ic_lora";
+            /** Videopath */
+            videoPath: string;
+        };
         /** LtxDownloadRecommendationResponse */
         LtxDownloadRecommendationResponse: {
             /** Cps To Download */
-            cps_to_download: ("ltx-2.3-22b-distilled" | "ltx-2.3-spatial-upscaler-x2-1.0" | "ltx-2.3-22b-ic-lora-union-control-ref0.5" | "dpt-hybrid-midas" | "yolox-l-torchscript" | "dw-ll-ucoco-384-bs5" | "gemma-3-12b-it-qat-q4_0-unquantized" | "z-image-turbo")[];
+            cps_to_download: ("ltx-2.3-22b-distilled" | "ltx-2.3-22b-dev" | "ltx-2.3-22b-distilled-lora-384-1.1" | "ltx-2.3-spatial-upscaler-x2-1.0" | "ltx-2.3-22b-ic-lora-union-control-ref0.5" | "dpt-hybrid-midas" | "yolox-l-torchscript" | "dw-ll-ucoco-384-bs5" | "gemma-3-12b-it-qat-q4_0-unquantized" | "z-image-turbo" | "flux-2-klein-9b")[];
             /**
              * Status
              * @constant
@@ -934,7 +4999,7 @@ export interface components {
         /** LtxIcLoraRecommendationResponse */
         LtxIcLoraRecommendationResponse: {
             /** Cps To Download */
-            cps_to_download: ("ltx-2.3-22b-distilled" | "ltx-2.3-spatial-upscaler-x2-1.0" | "ltx-2.3-22b-ic-lora-union-control-ref0.5" | "dpt-hybrid-midas" | "yolox-l-torchscript" | "dw-ll-ucoco-384-bs5" | "gemma-3-12b-it-qat-q4_0-unquantized" | "z-image-turbo")[];
+            cps_to_download: ("ltx-2.3-22b-distilled" | "ltx-2.3-22b-dev" | "ltx-2.3-22b-distilled-lora-384-1.1" | "ltx-2.3-spatial-upscaler-x2-1.0" | "ltx-2.3-22b-ic-lora-union-control-ref0.5" | "dpt-hybrid-midas" | "yolox-l-torchscript" | "dw-ll-ucoco-384-bs5" | "gemma-3-12b-it-qat-q4_0-unquantized" | "z-image-turbo" | "flux-2-klein-9b")[];
         };
         /** LtxInsufficientFundsErrorResponse */
         LtxInsufficientFundsErrorResponse: {
@@ -957,9 +5022,9 @@ export interface components {
         /** LtxUpgradeRecommendationResponse */
         LtxUpgradeRecommendationResponse: {
             /** Cps To Delete */
-            cps_to_delete: ("ltx-2.3-22b-distilled" | "ltx-2.3-spatial-upscaler-x2-1.0" | "ltx-2.3-22b-ic-lora-union-control-ref0.5" | "dpt-hybrid-midas" | "yolox-l-torchscript" | "dw-ll-ucoco-384-bs5" | "gemma-3-12b-it-qat-q4_0-unquantized" | "z-image-turbo")[];
+            cps_to_delete: ("ltx-2.3-22b-distilled" | "ltx-2.3-22b-dev" | "ltx-2.3-22b-distilled-lora-384-1.1" | "ltx-2.3-spatial-upscaler-x2-1.0" | "ltx-2.3-22b-ic-lora-union-control-ref0.5" | "dpt-hybrid-midas" | "yolox-l-torchscript" | "dw-ll-ucoco-384-bs5" | "gemma-3-12b-it-qat-q4_0-unquantized" | "z-image-turbo" | "flux-2-klein-9b")[];
             /** Cps To Download */
-            cps_to_download: ("ltx-2.3-22b-distilled" | "ltx-2.3-spatial-upscaler-x2-1.0" | "ltx-2.3-22b-ic-lora-union-control-ref0.5" | "dpt-hybrid-midas" | "yolox-l-torchscript" | "dw-ll-ucoco-384-bs5" | "gemma-3-12b-it-qat-q4_0-unquantized" | "z-image-turbo")[];
+            cps_to_download: ("ltx-2.3-22b-distilled" | "ltx-2.3-22b-dev" | "ltx-2.3-22b-distilled-lora-384-1.1" | "ltx-2.3-spatial-upscaler-x2-1.0" | "ltx-2.3-22b-ic-lora-union-control-ref0.5" | "dpt-hybrid-midas" | "yolox-l-torchscript" | "dw-ll-ucoco-384-bs5" | "gemma-3-12b-it-qat-q4_0-unquantized" | "z-image-turbo" | "flux-2-klein-9b")[];
             /**
              * Ltx Model Id
              * @constant
@@ -976,12 +5041,12 @@ export interface components {
         /** ModelDeleteRequest */
         ModelDeleteRequest: {
             /** Cp Ids */
-            cp_ids?: ("ltx-2.3-22b-distilled" | "ltx-2.3-spatial-upscaler-x2-1.0" | "ltx-2.3-22b-ic-lora-union-control-ref0.5" | "dpt-hybrid-midas" | "yolox-l-torchscript" | "dw-ll-ucoco-384-bs5" | "gemma-3-12b-it-qat-q4_0-unquantized" | "z-image-turbo")[];
+            cp_ids?: ("ltx-2.3-22b-distilled" | "ltx-2.3-22b-dev" | "ltx-2.3-22b-distilled-lora-384-1.1" | "ltx-2.3-spatial-upscaler-x2-1.0" | "ltx-2.3-22b-ic-lora-union-control-ref0.5" | "dpt-hybrid-midas" | "yolox-l-torchscript" | "dw-ll-ucoco-384-bs5" | "gemma-3-12b-it-qat-q4_0-unquantized" | "z-image-turbo" | "flux-2-klein-9b")[];
         };
         /** ModelDownloadRequest */
         ModelDownloadRequest: {
             /** Cp Ids */
-            cp_ids?: ("ltx-2.3-22b-distilled" | "ltx-2.3-spatial-upscaler-x2-1.0" | "ltx-2.3-22b-ic-lora-union-control-ref0.5" | "dpt-hybrid-midas" | "yolox-l-torchscript" | "dw-ll-ucoco-384-bs5" | "gemma-3-12b-it-qat-q4_0-unquantized" | "z-image-turbo")[];
+            cp_ids?: ("ltx-2.3-22b-distilled" | "ltx-2.3-22b-dev" | "ltx-2.3-22b-distilled-lora-384-1.1" | "ltx-2.3-spatial-upscaler-x2-1.0" | "ltx-2.3-22b-ic-lora-union-control-ref0.5" | "dpt-hybrid-midas" | "yolox-l-torchscript" | "dw-ll-ucoco-384-bs5" | "gemma-3-12b-it-qat-q4_0-unquantized" | "z-image-turbo" | "flux-2-klein-9b")[];
             /**
              * Type
              * @default download
@@ -1011,6 +5076,323 @@ export interface components {
             loaded: boolean;
             /** Name */
             name: string;
+        };
+        /**
+         * MoveLoraDatasetRequest
+         * @description Move a dataset into a folder. `folderId` null = root.
+         */
+        MoveLoraDatasetRequest: {
+            /** Folderid */
+            folderId?: string | null;
+        };
+        /**
+         * MoveLoraFolderRequest
+         * @description Reparent a folder. `parentId` null = root; must not create a cycle.
+         */
+        MoveLoraFolderRequest: {
+            /** Parentid */
+            parentId?: string | null;
+        };
+        /**
+         * PexelsDownloadRequest
+         * @description Download a chosen Pexels asset into app storage. `url` must be a file
+         *     URL returned by `PexelsSearchResponse`.
+         */
+        PexelsDownloadRequest: {
+            /**
+             * Ext
+             * @default
+             */
+            ext: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "video" | "photo";
+            /** Url */
+            url: string;
+        };
+        /** PexelsDownloadResponse */
+        PexelsDownloadResponse: {
+            /** Localpath */
+            localPath: string;
+            probe?: components["schemas"]["LoraClipProbeApi"] | null;
+        };
+        /**
+         * PexelsMediaItemApi
+         * @description One Pexels search hit, normalized across photos + videos.
+         */
+        PexelsMediaItemApi: {
+            /** Alt */
+            alt: string;
+            /** Author */
+            author: string;
+            /** Authorurl */
+            authorUrl: string;
+            /** Downloadext */
+            downloadExt: string;
+            /** Downloadurl */
+            downloadUrl: string;
+            /** Durationseconds */
+            durationSeconds?: number | null;
+            /** Height */
+            height: number;
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "video" | "photo";
+            /** Pexelsurl */
+            pexelsUrl: string;
+            /** Previewurl */
+            previewUrl: string;
+            /** Width */
+            width: number;
+        };
+        /**
+         * PexelsSearchRequest
+         * @description Search Pexels for stock media to add to a LoRA collection.
+         *
+         *     An empty `query` returns the curated/popular feed so the browser opens
+         *     with content. `media` selects the photo or video endpoint.
+         */
+        PexelsSearchRequest: {
+            /**
+             * Media
+             * @default video
+             * @enum {string}
+             */
+            media: "video" | "photo";
+            /**
+             * Orientation
+             * @default
+             * @enum {string}
+             */
+            orientation: "" | "landscape" | "portrait" | "square";
+            /**
+             * Page
+             * @default 1
+             */
+            page: number;
+            /**
+             * Perpage
+             * @default 24
+             */
+            perPage: number;
+            /**
+             * Query
+             * @default
+             */
+            query: string;
+        };
+        /** PexelsSearchResponse */
+        PexelsSearchResponse: {
+            /** Hasnext */
+            hasNext: boolean;
+            /** Items */
+            items: components["schemas"]["PexelsMediaItemApi"][];
+            /** Page */
+            page: number;
+            /** Perpage */
+            perPage: number;
+            /** Totalresults */
+            totalResults: number;
+        };
+        /**
+         * PublicationExampleApi
+         * @description A showcase clip the user chose from the LoRA's dataset.
+         */
+        PublicationExampleApi: {
+            /**
+             * Caption
+             * @default
+             */
+            caption: string;
+            /** Mediapath */
+            mediaPath: string;
+        };
+        /**
+         * PublicationMetaApi
+         * @description User-editable model-card fields (pre-seeded server-side from the run).
+         */
+        PublicationMetaApi: {
+            /**
+             * Author
+             * @default
+             */
+            author: string;
+            /**
+             * Basemodel
+             * @default Lightricks/LTX-Video
+             */
+            baseModel: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * License
+             * @default other
+             */
+            license: string;
+            /**
+             * Summary
+             * @default
+             */
+            summary: string;
+            /** Tags */
+            tags?: string[];
+            /** Title */
+            title: string;
+        };
+        /**
+         * PublishLoraExportRequest
+         * @description Write the publication bundle (card(s) + examples + weights) under
+         *     `destPath`.
+         */
+        PublishLoraExportRequest: {
+            /** Destpath */
+            destPath: string;
+            /** Examples */
+            examples?: components["schemas"]["PublicationExampleApi"][];
+            meta: components["schemas"]["PublicationMetaApi"];
+            /** Platforms */
+            platforms: ("huggingface" | "civitai" | "portable")[];
+        };
+        /** PublishLoraExportResponse */
+        PublishLoraExportResponse: {
+            /** Examplecount */
+            exampleCount: number;
+            /** Files */
+            files: string[];
+            /** Publicationpath */
+            publicationPath: string;
+            /** Weightsfile */
+            weightsFile?: string | null;
+        };
+        /**
+         * PublishLoraPreviewRequest
+         * @description Render (without writing) the card for each platform. `meta` is omitted on
+         *     the first call so the server returns its suggested fields to prefill.
+         */
+        PublishLoraPreviewRequest: {
+            /** Examples */
+            examples?: components["schemas"]["PublicationExampleApi"][];
+            meta?: components["schemas"]["PublicationMetaApi"] | null;
+            /** Platforms */
+            platforms: ("huggingface" | "civitai" | "portable")[];
+        };
+        /** PublishLoraPreviewResponse */
+        PublishLoraPreviewResponse: {
+            /** Cards */
+            cards: {
+                [key: string]: string;
+            };
+            meta: components["schemas"]["PublicationMetaApi"];
+        };
+        /** QueueItemApi */
+        QueueItemApi: {
+            /** Completedat */
+            completedAt?: string | null;
+            /** Createdat */
+            createdAt: string;
+            /** Error */
+            error?: string | null;
+            /** Id */
+            id: string;
+            /** Originatingprojectid */
+            originatingProjectId?: string | null;
+            /** Outputpath */
+            outputPath?: string | null;
+            /** Payload */
+            payload: components["schemas"]["VideoQueuePayload"] | components["schemas"]["ImageQueuePayload"] | components["schemas"]["ImageEditQueuePayload"] | components["schemas"]["LoraQueuePayload"];
+            /**
+             * Retrycount
+             * @default 0
+             */
+            retryCount: number;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "genspace" | "queue_manual" | "gemini_brainstorm";
+            /** Startedat */
+            startedAt?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "running" | "completed" | "failed" | "cancelled";
+        };
+        /** QueueStateResponse */
+        QueueStateResponse: {
+            /** Items */
+            items: components["schemas"]["QueueItemApi"][];
+            /** Paused */
+            paused: boolean;
+            /** Schemaversion */
+            schemaVersion: number;
+        };
+        /**
+         * RegenerateLoraDerivationEditRequest
+         * @description Re-run the Nano Banana edit for a job paused in `review`.
+         *
+         *     Optionally swap in a new `editPrompt`; omit/blank to re-roll the same one.
+         */
+        RegenerateLoraDerivationEditRequest: {
+            /** Editprompt */
+            editPrompt?: string | null;
+        };
+        /**
+         * RenameLoraDatasetRequest
+         * @description Rename a dataset at any status (display-only; the remote dataset dir is
+         *     already recorded and isn't recomputed from the name).
+         */
+        RenameLoraDatasetRequest: {
+            /** Name */
+            name: string;
+        };
+        /** RenameLoraFolderRequest */
+        RenameLoraFolderRequest: {
+            /** Name */
+            name: string;
+        };
+        /**
+         * ReorderQueueRequest
+         * @description Full permutation of currently-pending item ids. Permutation
+         *     semantics (rather than swap/move) mean the frontend's drag-and-drop
+         *     produces one new ordering that we validate atomically — no
+         *     intermediate states to reason about.
+         */
+        ReorderQueueRequest: {
+            /** Itemids */
+            itemIds: string[];
+        };
+        /** ReprofileImportedLoraRequest */
+        ReprofileImportedLoraRequest: {
+            /** Exampleprompt */
+            examplePrompt?: string | null;
+            /** Huggingfaceurl */
+            huggingfaceUrl?: string | null;
+        };
+        /** ReprofileImportedLoraResponse */
+        ReprofileImportedLoraResponse: {
+            entry: components["schemas"]["LoraInferenceEntryApi"];
+            /** Profilemessage */
+            profileMessage?: string | null;
+            /**
+             * Profilestatus
+             * @default skipped
+             * @enum {string}
+             */
+            profileStatus: "builtin" | "configured" | "skipped" | "failed";
+        };
+        /** ReselectRunpodRequest */
+        ReselectRunpodRequest: {
+            selection: components["schemas"]["RunpodSelectionApi"];
         };
         /** RetakeCancelledResponse */
         RetakeCancelledResponse: {
@@ -1062,10 +5444,84 @@ export interface components {
             /** Video Path */
             video_path: string;
         };
+        /**
+         * RunPreprocessingRequest
+         * @description Create + enqueue a preprocessed dataset from an uploaded dataset.
+         *
+         *     `resolutionBuckets` follows the trainer's "WxHxF" form; the backend
+         *     validates spatial%32==0 and frames%8==1 before enqueueing.
+         */
+        RunPreprocessingRequest: {
+            /**
+             * Autocaption
+             * @default true
+             */
+            autoCaption: boolean;
+            /**
+             * Captionertype
+             * @default gemini_flash
+             * @enum {string}
+             */
+            captionerType: "qwen_omni" | "gemini_flash";
+            /** Datasetid */
+            datasetId: string;
+            /**
+             * Resolutionbuckets
+             * @default 768x448x49
+             */
+            resolutionBuckets: string;
+            /**
+             * Withaudio
+             * @default false
+             */
+            withAudio: boolean;
+        };
+        /**
+         * RunpodSelectionApi
+         * @description Explicit compute/storage choice snapshotted for one RunPod run.
+         */
+        RunpodSelectionApi: {
+            /**
+             * Datacenter
+             * @default
+             */
+            datacenter: string;
+            /** Gputype */
+            gpuType: string;
+            /**
+             * Gpuvramgb
+             * @default 0
+             */
+            gpuVramGb: number;
+            /** Volumeid */
+            volumeId?: string | null;
+            /**
+             * Workspacepolicy
+             * @default ephemeral_any_region
+             * @enum {string}
+             */
+            workspacePolicy: "primary_cache" | "ephemeral_any_region";
+        };
         /** RuntimePolicyResponse */
         RuntimePolicyResponse: {
             /** Force Api Generations */
             force_api_generations: boolean;
+        };
+        /**
+         * SetLoraExampleRequest
+         * @description Attach a user-supplied example image/video to an imported or trained LoRA.
+         *
+         *     `sourcePath` is an absolute path from the Electron file dialog; the backend
+         *     copies it into app storage so the example survives the source moving, and
+         *     infers the media kind from the extension. Replaces any existing example.
+         */
+        SetLoraExampleRequest: {
+            /** Sourcepath */
+            sourcePath: string;
+        };
+        /** SetLoraExampleResponse */
+        SetLoraExampleResponse: {
+            entry: components["schemas"]["LoraInferenceEntryApi"];
         };
         /** SettingsResponse */
         SettingsResponse: {
@@ -1080,15 +5536,91 @@ export interface components {
              */
             hasGeminiApiKey: boolean;
             /**
+             * Hashftoken
+             * @default false
+             */
+            hasHfToken: boolean;
+            /**
              * Hasltxapikey
              * @default false
              */
             hasLtxApiKey: boolean;
             /**
+             * Haspexelsapikey
+             * @default false
+             */
+            hasPexelsApiKey: boolean;
+            /**
+             * Hasrunpodapikey
+             * @default false
+             */
+            hasRunpodApiKey: boolean;
+            /**
              * Lockedseed
              * @default 42
              */
             lockedSeed: number;
+            /**
+             * Loraautoprovision
+             * @default true
+             */
+            loraAutoProvision: boolean;
+            /**
+             * Lorafalconcurrency
+             * @default 20
+             */
+            loraFalConcurrency: number;
+            /**
+             * Loramodelcheckpointfile
+             * @default ltx-2.3-22b-dev.safetensors
+             */
+            loraModelCheckpointFile: string;
+            /**
+             * Loramodelhfrepo
+             * @default Lightricks/LTX-2.3
+             */
+            loraModelHfRepo: string;
+            /**
+             * Lorananobananamodel
+             * @default nano-banana-2
+             */
+            loraNanoBananaModel: string;
+            /**
+             * Loraprovider
+             * @default runpod
+             * @enum {string}
+             */
+            loraProvider: "runpod" | "local";
+            /**
+             * Loraremotemodelpath
+             * @default
+             */
+            loraRemoteModelPath: string;
+            /**
+             * Loraremotetextencoderpath
+             * @default
+             */
+            loraRemoteTextEncoderPath: string;
+            /**
+             * Loraremoteworkspacedir
+             * @default /workspace
+             */
+            loraRemoteWorkspaceDir: string;
+            /**
+             * Loratextencoderhfrepo
+             * @default google/gemma-3-12b-it-qat-q4_0-unquantized
+             */
+            loraTextEncoderHfRepo: string;
+            /**
+             * Loratrainerreporef
+             * @default 9377758131b1ffde4b7f766804590a6617bf2ab9
+             */
+            loraTrainerRepoRef: string;
+            /**
+             * Loratrainerrepourl
+             * @default https://github.com/Lightricks/LTX-2.git
+             */
+            loraTrainerRepoUrl: string;
             /**
              * Modelsdir
              * @default
@@ -1110,10 +5642,50 @@ export interface components {
              */
             promptEnhancerEnabledT2V: boolean;
             /**
+             * Runpodgputype
+             * @default
+             */
+            runpodGpuType: string;
+            /**
+             * Runpodgpuvramgb
+             * @default 0
+             */
+            runpodGpuVramGb: number;
+            /**
+             * Runpodidlestopminutes
+             * @default 10
+             */
+            runpodIdleStopMinutes: number;
+            /**
+             * Runpodimage
+             * @default
+             */
+            runpodImage: string;
+            /**
+             * Runpodkeepmodelcached
+             * @default false
+             */
+            runpodKeepModelCached: boolean;
+            /**
+             * Runpodnetworkvolumeid
+             * @default
+             */
+            runpodNetworkVolumeId: string;
+            /**
+             * Runpodvolumesizegb
+             * @default 250
+             */
+            runpodVolumeSizeGb: number;
+            /**
              * Seedlocked
              * @default false
              */
             seedLocked: boolean;
+            /**
+             * Usedevqualitybase
+             * @default false
+             */
+            useDevQualityBase: boolean;
             /**
              * Uselocaltextencoder
              * @default false
@@ -1129,6 +5701,92 @@ export interface components {
              * @default false
              */
             userPrefersLtxApiVideoGenerations: boolean;
+        };
+        /**
+         * StartTrainingPipelineRequest
+         * @description One-click pipeline: upload → preprocess → train in one action.
+         *
+         *     Bundles the preprocess params (resolution/audio/caption) with the training
+         *     config so the backend can auto-advance through every stage. `config`/
+         *     `profileId` resolve the training config exactly like `StartTrainingRequest`.
+         */
+        StartTrainingPipelineRequest: {
+            /**
+             * Allowunsafeoverride
+             * @default false
+             */
+            allowUnsafeOverride: boolean;
+            /**
+             * Autocaption
+             * @default true
+             */
+            autoCaption: boolean;
+            /**
+             * Captionertype
+             * @default gemini_flash
+             * @enum {string}
+             */
+            captionerType: "qwen_omni" | "gemini_flash";
+            config?: components["schemas"]["LoraTrainingConfigApi"] | null;
+            /** Datasetid */
+            datasetId: string;
+            /** Description */
+            description?: string | null;
+            /** Name */
+            name: string;
+            /** Profileid */
+            profileId?: string | null;
+            /**
+             * Provider
+             * @default runpod
+             * @enum {string}
+             */
+            provider: "runpod" | "local";
+            /**
+             * Resolutionbuckets
+             * @default 768x448x49
+             */
+            resolutionBuckets: string;
+            runpodSelection?: components["schemas"]["RunpodSelectionApi"] | null;
+            /** Triggerwordoverride */
+            triggerWordOverride?: string | null;
+            /** Validationprompts */
+            validationPrompts?: string[] | null;
+            /**
+             * Withaudio
+             * @default false
+             */
+            withAudio: boolean;
+            /** Workspacepolicy */
+            workspacePolicy?: ("primary_cache" | "ephemeral_any_region") | null;
+        };
+        /** StartTrainingRequest */
+        StartTrainingRequest: {
+            /**
+             * Allowunsafeoverride
+             * @default false
+             */
+            allowUnsafeOverride: boolean;
+            config?: components["schemas"]["LoraTrainingConfigApi"] | null;
+            /** Description */
+            description?: string | null;
+            /** Name */
+            name: string;
+            /** Preprocessedid */
+            preprocessedId: string;
+            /** Profileid */
+            profileId?: string | null;
+            /**
+             * Provider
+             * @default runpod
+             * @enum {string}
+             */
+            provider: "runpod" | "local";
+            runpodSelection?: components["schemas"]["RunpodSelectionApi"] | null;
+            /** Triggerwordoverride */
+            triggerWordOverride?: string | null;
+            /** Validationprompts */
+            validationPrompts?: string[] | null;
         };
         /** StatusResponse */
         StatusResponse: {
@@ -1179,11 +5837,100 @@ export interface components {
         /** TextEncoderRecommendationResponse */
         TextEncoderRecommendationResponse: {
             /** Cp To Download */
-            cp_to_download: ("ltx-2.3-22b-distilled" | "ltx-2.3-spatial-upscaler-x2-1.0" | "ltx-2.3-22b-ic-lora-union-control-ref0.5" | "dpt-hybrid-midas" | "yolox-l-torchscript" | "dw-ll-ucoco-384-bs5" | "gemma-3-12b-it-qat-q4_0-unquantized" | "z-image-turbo") | null;
+            cp_to_download: ("ltx-2.3-22b-distilled" | "ltx-2.3-22b-dev" | "ltx-2.3-22b-distilled-lora-384-1.1" | "ltx-2.3-spatial-upscaler-x2-1.0" | "ltx-2.3-22b-ic-lora-union-control-ref0.5" | "dpt-hybrid-midas" | "yolox-l-torchscript" | "dw-ll-ucoco-384-bs5" | "gemma-3-12b-it-qat-q4_0-unquantized" | "z-image-turbo" | "flux-2-klein-9b") | null;
             /** Expected Size Bytes */
             expected_size_bytes: number;
             /** Expected Size Gb */
             expected_size_gb: number;
+        };
+        /** UpdateImportedLoraRequest */
+        UpdateImportedLoraRequest: {
+            /** Description */
+            description?: string | null;
+            /** Huggingfaceurl */
+            huggingfaceUrl?: string | null;
+            /** Name */
+            name?: string | null;
+        };
+        /** UpdateImportedLoraResponse */
+        UpdateImportedLoraResponse: {
+            entry: components["schemas"]["LoraInferenceEntryApi"];
+        };
+        /**
+         * UpdateLoraDatasetRequest
+         * @description Edit a dataset's name, trigger word, and clip captions.
+         *
+         *     Only valid while the dataset is in `draft` / `upload_failed`; once
+         *     uploaded the remote copy is in flight and edits are rejected (409)
+         *     so a re-upload is the explicit path.
+         */
+        UpdateLoraDatasetRequest: {
+            /** Clips */
+            clips?: components["schemas"]["LoraClipInput"][] | null;
+            /** Name */
+            name?: string | null;
+            /** Triggerword */
+            triggerWord?: string | null;
+            /** Type */
+            type?: ("standard" | "ic_lora") | null;
+        };
+        /** UpdateLoraPromptTemplateRequest */
+        UpdateLoraPromptTemplateRequest: {
+            /** Prompttemplate */
+            promptTemplate?: string | null;
+            /** Triggerword */
+            triggerWord?: string | null;
+        };
+        /** UpdateLoraPromptTemplateResponse */
+        UpdateLoraPromptTemplateResponse: {
+            entry: components["schemas"]["LoraInferenceEntryApi"];
+        };
+        /**
+         * UpdateQueueItemRequest
+         * @description Replace a pending item's payload. Only valid while `pending` —
+         *     once the runner has claimed the item the snapshot is in flight and
+         *     editing would be racy, so the backend rejects with 409. The body
+         *     carries the full discriminated payload rather than a patch so we
+         *     don't need a partial-update schema per field.
+         */
+        UpdateQueueItemRequest: {
+            /** Payload */
+            payload: components["schemas"]["VideoQueuePayload"] | components["schemas"]["ImageQueuePayload"] | components["schemas"]["ImageEditQueuePayload"] | components["schemas"]["LoraQueuePayload"];
+        };
+        /** UpdateTrainedLoraRequest */
+        UpdateTrainedLoraRequest: {
+            /** Description */
+            description?: string | null;
+            /** Name */
+            name?: string | null;
+        };
+        /** UpdateTrainedLoraResponse */
+        UpdateTrainedLoraResponse: {
+            entry: components["schemas"]["LoraInferenceEntryApi"];
+        };
+        /** UpdateTrainingProfileRequest */
+        UpdateTrainingProfileRequest: {
+            config?: components["schemas"]["LoraTrainingConfigApi"] | null;
+            /** Datasettypes */
+            datasetTypes?: ("standard" | "ic_lora")[] | null;
+            /** Description */
+            description?: string | null;
+            /** Name */
+            name?: string | null;
+        };
+        /** UploadLoraDatasetRequest */
+        UploadLoraDatasetRequest: {
+            /** Provider */
+            provider?: ("runpod" | "local") | null;
+        };
+        /** VideoQueuePayload */
+        VideoQueuePayload: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "video";
+            request: components["schemas"]["GenerateVideoRequest"];
         };
     };
     responses: never;
@@ -1443,6 +6190,48 @@ export interface operations {
             };
         };
     };
+    route_generate_image_edit_api_generate_image_edit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerateImageEditRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GenerateImageEditCompleteResponse"] | components["schemas"]["GenerateImageEditCancelledResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
     route_generate_cancel_api_generate_cancel_post: {
         parameters: {
             query?: never;
@@ -1459,6 +6248,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CancelCancellingResponse"] | components["schemas"]["CancelNoActiveGenerationResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_image_model_specs_api_generate_image_models_specs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GenerateImageModelsSpecsResponse"];
                 };
             };
             /** @description Client Error */
@@ -1679,6 +6506,3754 @@ export interface operations {
             };
         };
     };
+    route_lora_inference_auto_prompt_api_lora_inference_auto_prompt_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutoPromptRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutoPromptResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_lora_inference_set_example_api_lora_inference_entries__lora_id__example_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lora_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetLoraExampleRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetLoraExampleResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_lora_inference_clear_example_api_lora_inference_entries__lora_id__example_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lora_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_lora_inference_example_media_api_lora_inference_entries__lora_id__example_media_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lora_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_lora_inference_generate_api_lora_inference_generate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoraStandardGenerateRequest"] | components["schemas"]["LoraUnionControlGenerateRequest"] | components["schemas"]["LoraVideoInputIcLoraGenerateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraGenerateCompleteResponse"] | components["schemas"]["LoraGenerateCancelledResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_lora_inference_import_api_lora_inference_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportLoraRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportLoraResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_lora_inference_delete_imported_api_lora_inference_imported__lora_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lora_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_lora_inference_update_imported_api_lora_inference_imported__lora_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lora_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateImportedLoraRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateImportedLoraResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_lora_inference_reprofile_imported_api_lora_inference_imported__lora_id__reprofile_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lora_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReprofileImportedLoraRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReprofileImportedLoraResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_lora_inference_update_prompt_template_api_lora_inference_prompt_template__lora_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lora_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateLoraPromptTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateLoraPromptTemplateResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_lora_inference_registry_api_lora_inference_registry_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraInferenceRegistryResponseApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_lora_inference_delete_trained_api_lora_inference_trained__lora_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lora_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_lora_inference_update_trained_api_lora_inference_trained__lora_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lora_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTrainedLoraRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateTrainedLoraResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_animate_frame_api_lora_animate_frame_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoraAnimateFrameRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraDerivedClipResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_apply_edits_api_lora_apply_edits_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoraApplyEditsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraApplyEditsResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_caption_clip_api_lora_caption_clip_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoraCaptionClipRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraCaptionClipResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_list_clip_jobs_api_lora_clip_jobs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraClipJobsResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_enqueue_clip_jobs_api_lora_clip_jobs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoraEnqueueClipJobsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraClipJobsResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_list_datasets_api_lora_datasets_get: {
+        parameters: {
+            query?: {
+                includeArchived?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraDatasetsResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_create_dataset_api_lora_datasets_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateLoraDatasetRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraDatasetApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_import_dataset_api_lora_datasets_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportLoraDatasetRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraDatasetApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_delete_dataset_api_lora_datasets__dataset_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_update_dataset_api_lora_datasets__dataset_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateLoraDatasetRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraDatasetApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_archive_dataset_api_lora_datasets__dataset_id__archive_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraDatasetApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_cancel_upload_api_lora_datasets__dataset_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraDatasetApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_export_dataset_api_lora_datasets__dataset_id__export_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExportLoraDatasetRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportLoraDatasetResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_move_dataset_api_lora_datasets__dataset_id__move_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MoveLoraDatasetRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraDatasetApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_rename_dataset_api_lora_datasets__dataset_id__rename_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenameLoraDatasetRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraDatasetApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_reselect_dataset_runpod_api_lora_datasets__dataset_id__reselect_runpod_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReselectRunpodRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraDatasetApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_unarchive_dataset_api_lora_datasets__dataset_id__unarchive_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraDatasetApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_upload_dataset_api_lora_datasets__dataset_id__upload_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["UploadLoraDatasetRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraDatasetApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_list_derivations_api_lora_derivations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraDerivationJobsResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_create_derivation_api_lora_derivations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateLoraDerivationJobRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraDerivationJobApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_cancel_all_derivations_api_lora_derivations_cancel_all_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelAllLoraDerivationsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraDerivationJobsResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_approve_derivation_api_lora_derivations__job_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraDerivationJobApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_cancel_derivation_api_lora_derivations__job_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraDerivationJobApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_dismiss_derivation_api_lora_derivations__job_id__dismiss_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraDerivationJobsResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_regenerate_derivation_edit_api_lora_derivations__job_id__regenerate_edit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegenerateLoraDerivationEditRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraDerivationJobApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_retry_derivation_api_lora_derivations__job_id__retry_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraDerivationJobApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_edit_frame_api_lora_edit_frame_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoraEditFrameRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraEditFrameResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_create_folder_api_lora_folders_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateLoraFolderRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraFolderApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_delete_folder_api_lora_folders__folder_id__delete: {
+        parameters: {
+            query?: {
+                recursive?: boolean;
+            };
+            header?: never;
+            path: {
+                folder_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_rename_folder_api_lora_folders__folder_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                folder_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenameLoraFolderRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraFolderApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_move_folder_api_lora_folders__folder_id__move_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                folder_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MoveLoraFolderRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraFolderApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_local_eligibility_api_lora_local_eligibility_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LocalTrainerEligibilityResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_motion_edit_api_lora_motion_edit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoraMotionEditRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraDerivedClipResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_pexels_download_api_lora_pexels_download_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PexelsDownloadRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PexelsDownloadResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_pexels_search_api_lora_pexels_search_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PexelsSearchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PexelsSearchResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_list_preprocessed_api_lora_preprocessed_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraPreprocessedResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_start_preprocessing_api_lora_preprocessed_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunPreprocessingRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraPreprocessedApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_delete_preprocessed_api_lora_preprocessed__preprocessed_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                preprocessed_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_cancel_preprocessing_api_lora_preprocessed__preprocessed_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                preprocessed_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraPreprocessedApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_reset_preprocessing_api_lora_preprocessed__preprocessed_id__reset_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                preprocessed_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraPreprocessedApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_resume_preprocessing_api_lora_preprocessed__preprocessed_id__resume_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                preprocessed_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraPreprocessedApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_probe_clip_api_lora_probe_clip_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoraProbeClipRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraProbeClipResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_list_profiles_api_lora_profiles_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraTrainingProfilesResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_create_profile_api_lora_profiles_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTrainingProfileRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraTrainingProfileApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_delete_profile_api_lora_profiles__profile_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_update_profile_api_lora_profiles__profile_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTrainingProfileRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraTrainingProfileApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_restyle_clip_api_lora_restyle_clip_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoraRestyleClipRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraDerivedClipResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_disable_runpod_cache_api_lora_runpod_cache_disable_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraNetworkVolumeActionResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_connect_runpod_api_lora_runpod_connect_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraConnectRunpodResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_list_runpod_pods_api_lora_runpod_pods_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraPodInfoApi"][];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_keep_runpod_pod_alive_api_lora_runpod_pods__pod_id__keep_alive_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pod_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoraKeepAliveRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraDatasetApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_resume_runpod_pod_api_lora_runpod_pods__pod_id__resume_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pod_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraPodActionResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_stop_runpod_pod_api_lora_runpod_pods__pod_id__stop_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pod_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraPodActionResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_terminate_runpod_pod_api_lora_runpod_pods__pod_id__terminate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pod_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraTerminatePodResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_create_runpod_volume_api_lora_runpod_volumes_create_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoraCreateNetworkVolumeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraNetworkVolumeActionResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_relocate_runpod_volume_api_lora_runpod_volumes_relocate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoraRelocateNetworkVolumeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraNetworkVolumeActionResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_select_runpod_volume_api_lora_runpod_volumes_select_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoraSelectNetworkVolumeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraNetworkVolumeActionResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_delete_runpod_volume_api_lora_runpod_volumes__volume_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                volume_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraNetworkVolumeActionResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_scene_split_api_lora_scene_split_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoraSceneSplitRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraSceneSplitResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_test_connection_api_lora_test_connection_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoraTestConnectionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraTestConnectionResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_list_training_api_lora_training_get: {
+        parameters: {
+            query?: {
+                includeArchived?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraTrainingResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_start_training_api_lora_training_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartTrainingRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraTrainingJobApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_start_training_pipeline_api_lora_training_pipeline_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartTrainingPipelineRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraDatasetApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_estimate_training_cost_api_lora_training_estimate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoraCostEstimateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraCostEstimateResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_delete_training_api_lora_training__training_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                training_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_archive_training_api_lora_training__training_id__archive_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                training_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraTrainingJobApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_cancel_training_api_lora_training__training_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                training_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraTrainingJobApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_training_logs_api_lora_training__training_id__logs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                training_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraJobLogsResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_publish_export_api_lora_training__training_id__publish_export_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                training_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishLoraExportRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublishLoraExportResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_publish_preview_api_lora_training__training_id__publish_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                training_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishLoraPreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublishLoraPreviewResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_reselect_training_runpod_api_lora_training__training_id__reselect_runpod_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                training_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReselectRunpodRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraTrainingJobApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_reset_training_api_lora_training__training_id__reset_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                training_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraTrainingJobApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_resume_training_api_lora_training__training_id__resume_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                training_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraTrainingJobApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_retry_training_download_api_lora_training__training_id__retry_download_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                training_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraTrainingJobApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_unarchive_training_api_lora_training__training_id__unarchive_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                training_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoraTrainingJobApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_training_validation_media_api_lora_training__training_id__validation_media_get: {
+        parameters: {
+            query: {
+                step: number;
+                sampleIndex: number;
+                extension?: string;
+            };
+            header?: never;
+            path: {
+                training_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_extract_audio_api_media_extract_audio_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExtractAudioRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtractAudioResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_extract_frame_api_media_extract_frame_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExtractFrameRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtractFrameResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
     route_check_model_access_api_models_check_access_post: {
         parameters: {
             query?: never;
@@ -1699,6 +10274,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CheckModelAccessResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_checkpoint_path_api_models_checkpoint_path_get: {
+        parameters: {
+            query: {
+                cp_id: "ltx-2.3-22b-distilled" | "ltx-2.3-22b-dev" | "ltx-2.3-22b-distilled-lora-384-1.1" | "ltx-2.3-spatial-upscaler-x2-1.0" | "ltx-2.3-22b-ic-lora-union-control-ref0.5" | "dpt-hybrid-midas" | "yolox-l-torchscript" | "dw-ll-ucoco-384-bs5" | "gemma-3-12b-it-qat-q4_0-unquantized" | "z-image-turbo" | "flux-2-klein-9b";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckpointPathResponse"];
                 };
             };
             /** @description Client Error */
@@ -1883,6 +10498,48 @@ export interface operations {
             };
         };
     };
+    route_load_model_from_path_api_models_load_from_path_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoadModelFromPathRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoadModelFromPathResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
     route_ltx_ic_lora_recommendation_api_models_ltx_ic_lora_recommendation_get: {
         parameters: {
             query?: never;
@@ -1975,6 +10632,524 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TextEncoderRecommendationResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_get_queue_api_queue_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QueueStateResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_clear_completed_api_queue_clear_completed_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClearQueueResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_clear_failed_api_queue_clear_failed_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClearQueueResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_list_queue_items_api_queue_items_get: {
+        parameters: {
+            query?: {
+                status?: ("pending" | "running" | "completed" | "failed" | "cancelled") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QueueItemApi"][];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_enqueue_item_api_queue_items_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnqueueQueueItemRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QueueItemApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_enqueue_batch_api_queue_items_batch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnqueueQueueBatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QueueItemApi"][];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_get_queue_item_api_queue_items__item_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QueueItemApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_remove_queue_item_api_queue_items__item_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_update_queue_item_api_queue_items__item_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateQueueItemRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QueueItemApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_cancel_queue_item_api_queue_items__item_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QueueItemApi"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_pause_queue_api_queue_pause_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QueueStateResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_reorder_queue_api_queue_reorder_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderQueueRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QueueItemApi"][];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_resume_queue_api_queue_resume_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QueueStateResponse"];
                 };
             };
             /** @description Client Error */
@@ -2127,6 +11302,46 @@ export interface operations {
                 "application/json": components["schemas"]["AppSettingsPatch"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatusResponse"];
+                };
+            };
+            /** @description Client Error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+            /** @description Server Error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPErrorResponse"];
+                };
+            };
+        };
+    };
+    route_delete_credential_api_settings_credentials__credential__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                credential: "ltx" | "fal" | "gemini" | "pexels" | "runpod" | "hugging-face";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {

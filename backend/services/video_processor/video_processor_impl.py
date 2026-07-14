@@ -41,6 +41,14 @@ class VideoProcessorImpl:
             return None
         return cast(FrameArray, frame)
 
+    def resize_frame(self, frame: FrameArray, size: tuple[int, int]) -> FrameArray:
+        import cv2
+
+        # INTER_AREA is the correct resampler for downscaling (the only
+        # direction the caller uses it for — the standardized reference is only
+        # ever scaled down toward the generation target, never up).
+        return cast(FrameArray, cv2.resize(frame, size, interpolation=cv2.INTER_AREA))
+
     def apply_canny(self, frame: FrameArray) -> FrameArray:
         import cv2
         import numpy as np

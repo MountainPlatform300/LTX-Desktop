@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { Button } from '../../components/ui/button'
 import { Tooltip } from '../../components/ui/tooltip'
+import { confirmAction } from '../../components/ui/confirm-dialog'
 import { ClipWaveform } from '../../components/AudioWaveform'
 import type { GenerationSettings } from '../../components/SettingsPanel'
 import { useAppSettings } from '../../contexts/AppSettingsContext'
@@ -2031,8 +2032,13 @@ export function VideoEditorTimelineEditingPanel(props: VideoEditorTimelineEditin
                             </Tooltip>
                             <Tooltip content="Delete track" side="right">
                               <button
-                                onClick={() => {
-                                  if (confirm(`Delete subtitle track "${track.name}"?`)) {
+                                onClick={async () => {
+                                  if (await confirmAction({
+                                    title: `Delete subtitle track “${track.name}”?`,
+                                    message: 'All subtitles on this track will be removed.',
+                                    confirmLabel: 'Delete track',
+                                    variant: 'destructive',
+                                  })) {
                                     setTracks(tracks.filter((_, i) => i !== realIndex))
                                     setSubtitles(prev => prev.filter(s => s.trackIndex !== realIndex))
                                   }
@@ -2565,8 +2571,14 @@ export function VideoEditorTimelineEditingPanel(props: VideoEditorTimelineEditin
                                   </Tooltip>
                                   <Tooltip content="Delete this take" side="top">
                                     <button
-                                      onClick={() => {
-                                        if (confirm(`Delete take ${(clip.takeIndex ?? (liveAsset.activeTakeIndex ?? liveAsset.takes!.length - 1)) + 1}?`)) {
+                                      onClick={async () => {
+                                        const takeNumber = (clip.takeIndex ?? (liveAsset.activeTakeIndex ?? liveAsset.takes!.length - 1)) + 1
+                                        if (await confirmAction({
+                                          title: `Delete take ${takeNumber}?`,
+                                          message: 'This take will be removed from the asset.',
+                                          confirmLabel: 'Delete take',
+                                          variant: 'destructive',
+                                        })) {
                                           handleDeleteTake(clip.id)
                                         }
                                       }}

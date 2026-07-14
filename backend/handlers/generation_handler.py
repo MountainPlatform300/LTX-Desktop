@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Literal
 
 from api_types import (
     CancelCancellingResponse,
-    CancelNoActiveGenerationResponse,
     CancelResponse,
     GenerationProgressResponse,
 )
@@ -35,6 +34,22 @@ GenerationSlot = Literal["gpu", "api"]
 class GenerationHandler(StateHandlerBase):
     def __init__(self, state: AppState, lock: RLock, config: RuntimeConfig) -> None:
         super().__init__(state, lock, config)
+        # Pre-load cancel token. The pipeline load (load_gpu_pipeline /
+        # load_ic_lora / ...) runs BEFORE start_generation — it has to, because
+        # the load allocates the gpu_slot that start_generation requires, and the
+        # load itself refuses to run with an active generation. That leaves a
+        # window where a cancel clicked during the (long, cold) load finds no
+        # running generation, so cancel_generation used to return
+        # `no_active_generation` and the cancel was silently dropped — the run
+        # then completed despite Stop. This token records a cancel issued during
+        # that window; is_generation_cancelled() observes it, so the handler's
+        # post-load cancel check unwinds the run. Each generate entry clears it
+        # up front so a stale idle cancel can't poison the next run.
+        self._cancel_requested = False
+
+    @with_state_lock
+    def clear_cancel_token(self) -> None:
+        self._cancel_requested = False
 
     @with_state_lock
     def start_generation(self, generation_id: str) -> None:
@@ -145,7 +160,9 @@ class GenerationHandler(StateHandlerBase):
             case (_, GenerationCancelled()):
                 return True
             case _:
-                return False
+                # Honor a cancel that was recorded during the pre-load window
+                # (before start_generation made a running generation observable).
+                return self._cancel_requested
 
     @with_state_lock
     def update_progress(
@@ -178,7 +195,15 @@ class GenerationHandler(StateHandlerBase):
             case (_, GenerationCancelled(id=generation_id)):
                 return CancelCancellingResponse(status="cancelling", id=generation_id)
             case _:
-                return CancelNoActiveGenerationResponse(status="no_active_generation")
+                # No running/cancelled generation yet — the generation is likely
+                # still in its pre-load window (pipeline load happens before
+                # start_generation). Record the intent so the handler's post-load
+                # cancel check unwinds the run instead of completing it. Returns
+                # `cancelling` (not `no_active_generation`) so the UI treats the
+                # Stop as acknowledged. `id="pending"` because no generation id
+                # has been assigned yet.
+                self._cancel_requested = True
+                return CancelCancellingResponse(status="cancelling", id="pending")
 
     @with_state_lock
     def complete_generation(self, result: str | list[str]) -> None:

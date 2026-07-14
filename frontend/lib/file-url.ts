@@ -21,3 +21,12 @@ export function pathToFileUrl(filePath: string): string {
 
   return 'file://' + encoded
 }
+
+const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp']
+
+/** Heuristic: treat a path as a still image (vs. a video clip) by extension.
+ *  Frame extracts and Nano Banana edits are PNGs, so they read as images. */
+export function isImagePath(filePath: string): boolean {
+  const lower = filePath.toLowerCase()
+  return IMAGE_EXTENSIONS.some((ext) => lower.endsWith(ext))
+}

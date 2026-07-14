@@ -1,32 +1,43 @@
 # LTX Desktop - Installer Build Guide
 
-This guide explains how to build a distributable installer for **LTX Desktop**.
+This guide explains how to build a distributable installer for
+**LTX Desktop**.
 
 - For running from source and debugging: see [`README.md`](../README.md) and [`CONTRIBUTING.md`](CONTRIBUTING.md).
-- For end-user requirements and first-run behavior: see [`README.md`](../README.md).
+- For downloading and installing a published build: see [`DOWNLOAD.md`](DOWNLOAD.md).
+
+> **Unsigned installer beta:** Only packages built by the gated
+> `installer-release.yml` workflow and attached to this repository's official
+> GitHub release are end-user builds. Local packages are development artifacts
+> and must not be redistributed as official releases.
 
 ## What Gets Bundled
 
-The installer includes:
+Every installer includes:
 - **Electron app** (React frontend + Electron shell)
-- **Embedded Python** (version from [`backend/.python-version`](../backend/.python-version)) with all dependencies pre-installed:
+- **Backend Python code**
+
+On macOS, the installer also includes embedded Python (version from
+[`backend/.python-version`](../backend/.python-version)) with all dependencies:
   - PyTorch (CUDA on Windows/Linux, MPS on macOS)
   - FastAPI, Diffusers, Transformers
   - LTX-2 inference packages
   - All other required libraries
-- **Backend Python code**
 
 **NOT bundled** (downloaded at runtime):
 - Model weights (downloaded on first run; can be large) from Hugging Face
-- On **Linux** and **Windows**: the Python environment itself is downloaded on first launch (keeps installer small)
+- On **Linux** and **Windows**: the matching, integrity-checked Python
+  environment from this fork's GitHub release
 
-The embedded Python is **fully isolated** from the target system's Python — it lives inside `{install_dir}/resources/python/` and never modifies system settings.
+Python is isolated from the target system. On macOS it lives inside
+`{install_dir}/resources/python/`; on Windows and Linux it lives in the
+app-data directory.
 
 ## Prerequisites
 
 Before building, ensure you have:
 
-1. **Node.js 18+** - https://nodejs.org/
+1. **Node.js 24** - https://nodejs.org/
 2. **uv** - https://docs.astral.sh/uv/ (Python package manager)
 3. **git** - needed for git-based Python packages
 4. **Internet connection** (for downloading Python and packages)
@@ -46,10 +57,15 @@ pnpm build
 
 This auto-detects your platform and will:
 1. Download a standalone Python distribution (version from [`backend/.python-version`](../backend/.python-version))
-2. Install all Python dependencies (~10GB on Windows/Linux with CUDA, ~2-3GB on macOS with MPS)
+2. Install all Python dependencies for runtime verification and artifact creation
 3. Build the frontend
 4. Package everything with electron-builder
-5. Create a DMG (macOS), AppImage + deb (Linux), or NSIS installer (Windows) in the `release/` folder
+5. Create a local DMG (macOS), AppImage + deb (Linux), or NSIS installer
+   (Windows) in the `release/` folder
+
+Local packages are unsigned development artifacts. Published unsigned betas
+still require the signed-tag, CI, checksum, SBOM, provenance, and clean-machine
+gates in [`RELEASE.md`](RELEASE.md).
 
 ## Build Options
 
@@ -82,22 +98,20 @@ The underlying `local-build.sh` / `local-build.ps1` scripts also accept:
 ### macOS
 ```
 release/
-  └── LTX Desktop-<version>-arm64.dmg
+  └── LTX-Desktop-arm64.dmg
 ```
 
 ### Linux
 ```
 release/
-  ├── LTX Desktop-x86_64.AppImage
-  ├── LTX Desktop-amd64.deb
-  ├── LTX Desktop-arm64.AppImage
-  └── LTX Desktop-arm64.deb
+  ├── LTX-Desktop-x64.AppImage
+  └── LTX-Desktop-x64.deb
 ```
 
 ### Windows
 ```
 release/
-  └── LTX Desktop-<version>-Setup.exe
+  └── LTX-Desktop-Setup.exe
 ```
 
 ## Application Icon
@@ -114,20 +128,42 @@ Ensure you have internet access. The script downloads Python automatically.
 ### Build fails with CUDA errors
 The build doesn't require a GPU. CUDA packages are pre-built binaries.
 
-### macOS: "App is damaged" or Gatekeeper warning
-On unsigned builds, macOS Gatekeeper may block the app. Right-click the app and select "Open", or run:
+### macOS: Gatekeeper blocks an unsigned build
+
+Published users should follow the GUI-first instructions in
+[`DOWNLOAD.md`](DOWNLOAD.md). For a local build from source, quarantine can be
+removed for development:
 ```bash
 xattr -dr com.apple.quarantine /Applications/LTX\ Desktop.app
 ```
 
 ### Installer is too large
 Expected installer sizes (does not include model weights):
-- **Windows**: ~10GB (PyTorch CUDA ~2.5GB + ML libraries ~5GB + Python ~200MB + Electron ~100MB)
-- **Linux**: ~10GB (similar to Windows; PyTorch CUDA variant)
+- **Windows/Linux**: the desktop package is comparatively small; the Python
+  runtime is a separate multi-gigabyte first-run download
 - **macOS**: ~2-3GB (PyTorch MPS is much smaller than CUDA variant)
 
+## Package the Windows/Linux Python runtime
+
+After preparing `python-embed`, create the dependency identity and verified
+release parts:
+
+```bash
+pnpm python:hash
+pnpm python:package
+```
+
+The output under `release/python/` contains a manifest, `python-deps-hash.txt`,
+and numbered parts suitable for the matching GitHub release. Do not publish an
+installer unless all runtime parts are present under the same version tag.
+
+The official installer workflow builds these parts on the same native runner as
+the corresponding Windows/Linux installer, attests them, and validates the
+complete asset contract before staging a draft release.
+
 ### Runtime / first-run issues
-End-user topics like system requirements, first-run setup, and model download behavior are documented in [`README.md`](../README.md).
+End-user topics like OS warnings, system requirements, first-run setup, and
+model download behavior are documented in [`DOWNLOAD.md`](DOWNLOAD.md).
 
 ## Advanced: Manual Build Steps
 

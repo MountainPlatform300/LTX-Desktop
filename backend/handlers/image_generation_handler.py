@@ -14,12 +14,17 @@ from _routes._errors import HTTPError
 from api_types import (
     GenerateImageCancelledResponse,
     GenerateImageCompleteResponse,
+    GenerateImageModelsSpecsResponse,
     GenerateImageRequest,
     GenerateImageResponse,
 )
 from handlers.base import StateHandlerBase
 from handlers.generation_handler import GenerationHandler
 from handlers.pipelines_handler import PipelinesHandler
+from runtime_config.image_model_specs import (
+    build_image_model_specs_response,
+    resolve_image_model_spec,
+)
 from services.interfaces import ZitAPIClient
 from state.app_state_types import AppState
 
@@ -44,9 +49,17 @@ class ImageGenerationHandler(StateHandlerBase):
         self._pipelines = pipelines_handler
         self._zit_api_client = zit_api_client
 
+    def get_model_specs(self) -> GenerateImageModelsSpecsResponse:
+        return build_image_model_specs_response(self.config.default_models_dir)
+
     def generate(self, req: GenerateImageRequest) -> GenerateImageResponse:
         if self._generation.is_generation_running():
             raise HTTPError(409, "Generation already in progress")
+
+        # Clear any stale pre-load cancel token from a prior run before this
+        # attempt begins (including the API branch below). See
+        # GenerationHandler.clear_cancel_token.
+        self._generation.clear_cancel_token()
 
         width = (req.width // 16) * 16
         height = (req.height // 16) * 16
@@ -70,6 +83,28 @@ class ImageGenerationHandler(StateHandlerBase):
                 num_inference_steps=req.numSteps,
                 seed=seed,
                 num_images=num_images,
+            )
+
+        # Resolve the requested image model from the catalog (None/unknown falls
+        # back to Z-Image Turbo). Coming-soon models are selectable and
+        # downloadable but don't have inference wired yet — fail fast with 501
+        # before any GPU work so the UI never silently no-ops on them.
+        model_spec = resolve_image_model_spec(req.model)
+        if model_spec.inference_status == "coming_soon":
+            raise HTTPError(
+                501,
+                f"Inference for {model_spec.display_name} isn't available yet \u2014 coming soon",
+                code="IMAGE_MODEL_INFERENCE_COMING_SOON",
+            )
+        # Klein unifies txt2img + editing but is served by the dedicated
+        # /api/generate-image-edit endpoint (it needs the Klein pipeline, not
+        # Z-Image). Reject it here so a direct API call never silently runs the
+        # wrong model; the Gen Space UI routes Klein to the edit endpoint.
+        if model_spec.id == "flux-2-klein-9b":
+            raise HTTPError(
+                400,
+                "FLUX.2 [klein] 9B uses the image-edit endpoint (/api/generate-image-edit).",
+                code="KLEIN_USE_EDIT_ENDPOINT",
             )
 
         try:

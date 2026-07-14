@@ -129,6 +129,10 @@ class RetakeHandler(StateHandlerBase):
         if self._generation.is_generation_running():
             raise HTTPError(409, "Generation already in progress")
 
+        # Clear any stale pre-load cancel token from a prior run before this
+        # attempt begins. See GenerationHandler.clear_cancel_token.
+        self._generation.clear_cancel_token()
+
         end_time = start_time + duration
         if start_time >= end_time:
             raise HTTPError(400, "start_time must be less than end_time")
@@ -149,6 +153,11 @@ class RetakeHandler(StateHandlerBase):
             pipeline_state = self._pipelines.load_retake_pipeline(distilled=True)
             self._generation.start_generation(generation_id)
             self._generation.update_progress("loading_model", 5, 0, 1)
+            # Honor a cancel that landed during the load — without this the
+            # retake path only checks after inference, so a Stop during load
+            # would still run the full generation before unwinding.
+            if self._generation.is_generation_cancelled():
+                raise RuntimeError("Generation was cancelled")
             self._generation.update_progress("inference", 15, 0, 1)
 
             pipeline_state.pipeline.generate(

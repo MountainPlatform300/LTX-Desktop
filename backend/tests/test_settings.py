@@ -25,6 +25,7 @@ class TestGetSettings:
         assert data["promptCacheSize"] == 100
         assert data["promptEnhancerEnabledT2V"] is True
         assert data["promptEnhancerEnabledI2V"] is False
+        assert data["runpodVolumeSizeGb"] == 250
         assert data["hasGeminiApiKey"] is False
         assert data["seedLocked"] is False
         assert data["lockedSeed"] == 42
@@ -186,6 +187,13 @@ class TestModelsDirAdminGuard:
             pose_processor_pipeline_class=type(fake_services.pose_processor_pipeline),
             a2v_pipeline_class=type(fake_services.a2v_pipeline),
             retake_pipeline_class=type(fake_services.retake_pipeline),
+            image_edit_pipeline_class=type(fake_services.image_edit_pipeline),
+            trainer_target=fake_services.trainer_target,
+            video_captioner=fake_services.video_captioner,
+            clip_processor=fake_services.clip_processor,
+            image_editor=fake_services.image_editor,
+            video_restyler=fake_services.video_restyler,
+            pexels_client=fake_services.pexels_client,
         )
         loaded = build_initial_state(test_state.config, default_app_settings.model_copy(deep=True), service_bundle=bundle)
         assert loaded.state.app_settings.models_dir == "/tmp/persisted-models"
@@ -212,6 +220,13 @@ class TestSettingsPersistence:
             pose_processor_pipeline_class=type(fake_services.pose_processor_pipeline),
             a2v_pipeline_class=type(fake_services.a2v_pipeline),
             retake_pipeline_class=type(fake_services.retake_pipeline),
+            image_edit_pipeline_class=type(fake_services.image_edit_pipeline),
+            trainer_target=fake_services.trainer_target,
+            video_captioner=fake_services.video_captioner,
+            clip_processor=fake_services.clip_processor,
+            image_editor=fake_services.image_editor,
+            video_restyler=fake_services.video_restyler,
+            pexels_client=fake_services.pexels_client,
         )
         return build_initial_state(test_state.config, default_app_settings.model_copy(deep=True), service_bundle=bundle)
 
@@ -251,6 +266,95 @@ class TestSettingsPersistence:
 
         loaded = self._new_state(test_state, default_app_settings)
         assert loaded.state.app_settings.user_prefers_ltx_api_video_generations is True
+
+    def test_credentials_are_encrypted_outside_settings_json(
+        self, client, test_state, default_app_settings
+    ):
+        response = client.post(
+            "/api/settings",
+            json={"runpodApiKey": "runpod-secret-value"},
+        )
+        assert response.status_code == 200
+
+        settings_text = test_state.config.settings_file.read_text(encoding="utf-8")
+        vault_path = test_state.config.app_data_dir / "credentials.vault"
+        vault_bytes = vault_path.read_bytes()
+        assert "runpod-secret-value" not in settings_text
+        assert "runpod_api_key" not in settings_text
+        assert b"runpod-secret-value" not in vault_bytes
+
+        loaded = self._new_state(test_state, default_app_settings)
+        assert loaded.state.app_settings.runpod_api_key == "runpod-secret-value"
+
+    def test_plaintext_credentials_migrate_to_encrypted_vault(
+        self, test_state, default_app_settings
+    ):
+        test_state.config.settings_file.write_text(
+            json.dumps(
+                {
+                    "runpod_api_key": "legacy-plaintext-secret",
+                    "prompt_cache_size": 12,
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        loaded = self._new_state(test_state, default_app_settings)
+
+        assert loaded.state.app_settings.runpod_api_key == "legacy-plaintext-secret"
+        assert loaded.state.app_settings.prompt_cache_size == 12
+        assert "legacy-plaintext-secret" not in test_state.config.settings_file.read_text(
+            encoding="utf-8"
+        )
+        assert b"legacy-plaintext-secret" not in (
+            test_state.config.app_data_dir / "credentials.vault"
+        ).read_bytes()
+
+
+class TestLegacyTrainerRepoMigration:
+    def test_legacy_ltx_video_trainer_url_is_migrated(self):
+        s = AppSettings.model_validate(
+            {"lora_trainer_repo_url": "https://github.com/Lightricks/LTX-Video-Trainer.git"}
+        )
+        assert s.lora_trainer_repo_url == "https://github.com/Lightricks/LTX-2.git"
+
+    def test_valid_ltx2_url_is_preserved(self):
+        url = "https://github.com/Lightricks/LTX-2.git"
+        s = AppSettings.model_validate({"lora_trainer_repo_url": url})
+        assert s.lora_trainer_repo_url == url
+
+    def test_custom_fork_url_is_rejected_in_favor_of_audited_source(self):
+        url = "https://github.com/acme/LTX-2-fork.git"
+        s = AppSettings.model_validate({"lora_trainer_repo_url": url})
+        assert s.lora_trainer_repo_url == "https://github.com/Lightricks/LTX-2.git"
+
+    def test_official_main_ref_is_migrated_to_verified_revision(self):
+        s = AppSettings.model_validate(
+            {
+                "lora_trainer_repo_url": "https://github.com/Lightricks/LTX-2.git",
+                "lora_trainer_repo_ref": "main",
+            }
+        )
+        assert s.lora_trainer_repo_ref == "9377758131b1ffde4b7f766804590a6617bf2ab9"
+
+    def test_custom_fork_main_ref_is_replaced_with_pinned_revision(self):
+        s = AppSettings.model_validate(
+            {
+                "lora_trainer_repo_url": "https://github.com/acme/LTX-2-fork.git",
+                "lora_trainer_repo_ref": "main",
+            }
+        )
+        assert s.lora_trainer_repo_ref != "main"
+
+    def test_stale_ltx2_model_repo_is_migrated_to_ltx23(self):
+        # The 22B checkpoint lives in LTX-2.3; the old LTX-2 (19B) repo value
+        # self-heals so the default checkpoint file resolves.
+        s = AppSettings.model_validate({"lora_model_hf_repo": "Lightricks/LTX-2"})
+        assert s.lora_model_hf_repo == "Lightricks/LTX-2.3"
+
+    def test_explicit_ltx23_model_repo_is_preserved(self):
+        s = AppSettings.model_validate({"lora_model_hf_repo": "Lightricks/LTX-2.3"})
+        assert s.lora_model_hf_repo == "Lightricks/LTX-2.3"
 
 
 class TestSettingsSchemaDrift:

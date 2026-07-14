@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 from io import BytesIO
 from pathlib import Path
 
@@ -13,6 +14,8 @@ from app_handler import ServiceBundle
 from runtime_config.model_download_specs import (
     DEPTH_PROCESSOR_CP_ID,
     IMG_GEN_MODEL_CP_ID,
+    PERSON_DETECTOR_CP_ID,
+    POSE_PROCESSOR_CP_ID,
     get_ic_loras_cp_ids,
     get_latest_ltx_model_id,
     get_ltx_model_spec,
@@ -39,8 +42,16 @@ def fake_services() -> FakeServices:
 
 
 @pytest.fixture(autouse=True)
-def test_state(tmp_path: Path, fake_services: FakeServices):
+def test_state(
+    tmp_path: Path,
+    fake_services: FakeServices,
+    monkeypatch: pytest.MonkeyPatch,
+):
     """Provide a fresh AppHandler per test and register it in DI."""
+    monkeypatch.setenv(
+        "LTX_SETTINGS_SECRET_KEY",
+        base64.urlsafe_b64encode(b"test-key-material-is-32-bytes!!!").decode("ascii"),
+    )
     app_data = tmp_path / "app_data"
     default_models_dir = app_data / "models"
     outputs_dir = tmp_path / "outputs"
@@ -81,6 +92,14 @@ def test_state(tmp_path: Path, fake_services: FakeServices):
         pose_processor_pipeline_class=type(fake_services.pose_processor_pipeline),
         a2v_pipeline_class=type(fake_services.a2v_pipeline),
         retake_pipeline_class=type(fake_services.retake_pipeline),
+        image_edit_pipeline_class=type(fake_services.image_edit_pipeline),
+        trainer_target=fake_services.trainer_target,
+        video_captioner=fake_services.video_captioner,
+        clip_processor=fake_services.clip_processor,
+        image_editor=fake_services.image_editor,
+        video_restyler=fake_services.video_restyler,
+        pexels_client=fake_services.pexels_client,
+        lora_prompt_profiler=fake_services.lora_prompt_profiler,
     )
 
     handler = build_initial_state(
@@ -157,6 +176,13 @@ def create_fake_ic_lora_files(test_state):
             else:
                 depth_path.mkdir(parents=True, exist_ok=True)
                 (depth_path / "config.json").write_text("{}", encoding="utf-8")
+
+        # Pose conditioning runs the DW pose processor on top of a YOLOX
+        # person detector; both are single-file torchscript checkpoints.
+        for cp_id in (POSE_PROCESSOR_CP_ID, PERSON_DETECTOR_CP_ID):
+            path = _test_model_path(test_state, cp_id)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b"\x00" * 1024)
 
     return _create
 

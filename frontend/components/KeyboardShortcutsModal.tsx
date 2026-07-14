@@ -9,6 +9,7 @@ import {
   findConflicts,
   ActionDefinition,
 } from '../lib/keyboard-shortcuts'
+import { confirmAction } from './ui/confirm-dialog'
 
 // ── Visual keyboard layout (US QWERTY) ──
 // Each key: { id: lowercase key id matching KeyCombo.key, label: display text, w: width units (1 = standard key) }
@@ -390,9 +391,14 @@ export function KeyboardShortcutsModal() {
                     {/* Delete button — only for user-created (non-built-in) presets */}
                     {!p.builtIn && (
                       <button
-                        onClick={(e) => {
+                        onClick={async (e) => {
                           e.stopPropagation()
-                          if (confirm(`Delete preset "${p.name}"?`)) {
+                          if (await confirmAction({
+                            title: `Delete preset “${p.name}”?`,
+                            message: 'This keyboard shortcut preset cannot be restored.',
+                            confirmLabel: 'Delete preset',
+                            variant: 'destructive',
+                          })) {
                             deleteCustomPreset(p.id)
                             if (presets.filter(pr => pr.id !== p.id).length > 0) {
                               setShowPresetDropdown(true)

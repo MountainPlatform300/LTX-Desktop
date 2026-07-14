@@ -1,0 +1,624 @@
+name: Installer Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing signed prerelease tag (for example v1.1.0-beta.2)
+        required: true
+        type: string
+      create_draft:
+        description: Create or update a draft GitHub prerelease
+        required: true
+        default: true
+        type: boolean
+      publish:
+        description: Publish the staged draft after protected-environment approval
+        required: true
+        default: false
+        type: boolean
+
+concurrency:
+  group: installer-release-${{ inputs.tag }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify installer release tag
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      checks: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .node-version
+
+      - name: Verify signed tag, version, and required checks
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [[ "${{ inputs.publish }}" = "true" && "${{ inputs.create_draft }}" != "true" ]]; then
+            echo "Publishing requires create_draft=true." >&2
+            exit 1
+          fi
+          test "$(git rev-parse "${RELEASE_TAG}^{commit}")" = "$(git rev-parse HEAD)"
+          test "v$(node -p "require('./package.json').version")" = "$RELEASE_TAG"
+          ref_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" --jq .object.sha)"
+          object_type="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" --jq .object.type)"
+          test "$object_type" = "tag"
+          test "$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${ref_sha}" --jq .verification.verified)" = "true"
+
+          checks="$(gh api "repos/${GITHUB_REPOSITORY}/commits/$(git rev-parse HEAD)/check-runs?per_page=100")"
+          required=(
+            "Secret Scan"
+            "Type Checking"
+            "Python Tests (linux)"
+            "Python Tests (windows)"
+            "Python Tests (macos)"
+            "Frontend Build"
+            "Analyze (python)"
+            "Analyze (javascript-typescript)"
+          )
+          for name in "${required[@]}"; do
+            state="$(jq -r --arg name "$name" \
+              '([.check_runs[] | select(.name == $name)]
+                | sort_by(.started_at // .created_at) | last
+                | "\(.status):\(.conclusion // "")") // ""' \
+              <<<"$checks")"
+            test "$state" = "completed:success"
+          done
+
+  windows:
+    name: Build Windows x64 installer
+    needs: verify
+    runs-on: windows-2025
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ inputs.tag }}
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
+        with:
+          version: "0.11.25"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - name: Build verified Windows runtime and installer
+        shell: pwsh
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
+          $vcRedistPath = "resources/vc_redist.x64.exe"
+          $expectedVcRedistSha256 = "cc0ff0eb1dc3f5188ae6300faef32bf5beeba4bdd6e8e445a9184072096b713b"
+          Invoke-WebRequest `
+            -Uri "https://aka.ms/vs/17/release/vc_redist.x64.exe" `
+            -OutFile $vcRedistPath
+          $sha256 = [System.Security.Cryptography.SHA256]::Create()
+          try {
+            $stream = [System.IO.File]::OpenRead($vcRedistPath)
+            try {
+              $actualVcRedistSha256 = [Convert]::ToHexString(
+                $sha256.ComputeHash($stream)
+              ).ToLowerInvariant()
+            } finally {
+              $stream.Dispose()
+            }
+          } finally {
+            $sha256.Dispose()
+          }
+          if ($actualVcRedistSha256 -ne $expectedVcRedistSha256) {
+            throw "VC++ Redistributable SHA-256 mismatch: $actualVcRedistSha256"
+          }
+          $vcRedistSignature = Get-AuthenticodeSignature $vcRedistPath
+          if (
+            $vcRedistSignature.Status -ne "Valid" -or
+            $vcRedistSignature.SignerCertificate.Subject -notlike "CN=Microsoft Corporation,*"
+          ) {
+            throw "VC++ Redistributable does not have a valid Microsoft signature"
+          }
+          pnpm install --frozen-lockfile
+          pnpm prepare:python
+          pnpm python:package -- --platform=win32 --arch=x64 --output=release/python
+          pnpm build:frontend
+          ./scripts/create-installer.ps1
+
+          $installer = "release/LTX-Desktop-Setup.exe"
+          if (-not (Test-Path $installer)) { throw "Expected installer missing: $installer" }
+          $signature = Get-AuthenticodeSignature $installer
+          if ($signature.Status -ne "NotSigned") {
+            throw "Unsigned beta unexpectedly has Authenticode status $($signature.Status)"
+          }
+
+          $installDir = Join-Path $env:RUNNER_TEMP "ltx-desktop-smoke"
+          $install = Start-Process $installer -ArgumentList @("/S", "/D=$installDir") -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "Silent installer failed: $($install.ExitCode)" }
+          $installedApp = Join-Path $installDir "LTX Desktop.exe"
+          if (-not (Test-Path $installedApp)) { throw "Installed application is missing" }
+          $appProcess = Start-Process $installedApp -ArgumentList "--disable-gpu" -PassThru
+          Start-Sleep -Seconds 15
+          if ($appProcess.HasExited) {
+            throw "Installed application exited during launch smoke test: $($appProcess.ExitCode)"
+          }
+          taskkill /PID $appProcess.Id /T /F | Out-Null
+          $uninstaller = Get-ChildItem $installDir -Filter "Uninstall*.exe" | Select-Object -First 1
+          if (-not $uninstaller) { throw "Uninstaller is missing" }
+          $uninstall = Start-Process $uninstaller.FullName -ArgumentList "/S" -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) { throw "Silent uninstall failed: $($uninstall.ExitCode)" }
+
+          $forbidden = Get-ChildItem release/win-unpacked -Recurse -File | Where-Object {
+            $_.Name -match '(^\.env$|\.vault$|id_rsa|\.pfx$|\.p12$|\.key$)'
+          }
+          if ($forbidden) { throw "Forbidden packaged files: $($forbidden.FullName -join ', ')" }
+          $privatePem = Get-ChildItem release/win-unpacked -Recurse -File -Filter "*.pem" |
+            Select-String -Pattern '-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----'
+          if ($privatePem) { throw "Private key material found in packaged app" }
+
+          New-Item -ItemType Directory -Force release/upload | Out-Null
+          Copy-Item $installer release/upload/
+          Copy-Item release/python/python-embed-win32.manifest.json release/upload/
+          Copy-Item release/python/python-embed-win32.part* release/upload/
+
+      - name: Attest Windows release assets
+        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        with:
+          subject-path: release/upload/*
+
+      - name: Upload Windows release assets
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: installer-windows-${{ inputs.tag }}
+          path: release/upload/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+  linux:
+    name: Build Linux x64 installers
+    needs: verify
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ inputs.tag }}
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
+        with:
+          version: "0.11.25"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - name: Install Linux packaging prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes libarchive-tools xvfb
+
+      - name: Build verified Linux runtime and installers
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile
+          pnpm prepare:python
+          pnpm python:package -- --platform=linux --arch=x64 --output=release/python
+          pnpm build:frontend
+          bash scripts/create-installer.sh --platform linux
+
+          appimage="release/LTX-Desktop-x64.AppImage"
+          deb="release/LTX-Desktop-x64.deb"
+          test -f "$appimage"
+          test -f "$deb"
+          chmod +x "$appimage"
+          "$appimage" --appimage-extract >/dev/null
+          dpkg-deb --contents "$deb" >/dev/null
+          mkdir -p deb-root deb-control
+          dpkg-deb --extract "$deb" deb-root
+          dpkg-deb --control "$deb" deb-control
+          set +e
+          APPIMAGE_EXTRACT_AND_RUN=1 timeout 20s xvfb-run -a "$appimage" --no-sandbox
+          smoke_status=$?
+          set -e
+          if [[ "$smoke_status" -ne 124 ]]; then
+            echo "AppImage launch smoke test exited unexpectedly: $smoke_status" >&2
+            exit 1
+          fi
+          if find squashfs-root deb-root deb-control -type f \( \
+            -name '.env' -o -name '*.vault' -o -name 'id_rsa' -o -name '*.pfx' \
+            -o -name '*.p12' -o -name '*.key' \
+          \) | grep -q .; then
+            echo "Forbidden file found in a Linux package" >&2
+            exit 1
+          fi
+          if grep -RIl --include='*.pem' \
+            -E -- '-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----' \
+            squashfs-root deb-root deb-control | grep -q .; then
+            echo "Private key material found in a Linux package" >&2
+            exit 1
+          fi
+
+          mkdir -p release/upload
+          cp "$appimage" "$deb" release/upload/
+          cp release/python/python-embed-linux-x64.manifest.json release/upload/
+          cp release/python/python-embed-linux-x64.part* release/upload/
+
+      - name: Attest Linux release assets
+        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        with:
+          subject-path: release/upload/*
+
+      - name: Upload Linux release assets
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: installer-linux-${{ inputs.tag }}
+          path: release/upload/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+  macos:
+    name: Build macOS arm64 installer
+    needs: verify
+    runs-on: macos-15
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ inputs.tag }}
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
+        with:
+          version: "0.11.25"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - name: Build unsigned macOS arm64 installer
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = "arm64"
+          pnpm install --frozen-lockfile
+          pnpm prepare:python
+          pnpm build:frontend
+          bash scripts/create-installer.sh --platform mac
+
+          dmg="release/LTX-Desktop-arm64.dmg"
+          test -f "$dmg"
+          signing_details="$(
+            codesign --display --verbose=4 \
+              "release/mac-arm64/LTX Desktop.app" 2>&1 || true
+          )"
+          if grep -q '^Authority=Developer ID Application' <<<"$signing_details"; then
+            echo "Unsigned beta unexpectedly has a Developer ID signature" >&2
+            exit 1
+          fi
+          if spctl --assess --type execute \
+            "release/mac-arm64/LTX Desktop.app" >/dev/null 2>&1; then
+            echo "Unsigned beta unexpectedly passed Gatekeeper assessment" >&2
+            exit 1
+          fi
+
+          mount_point="$(
+            hdiutil attach -nobrowse -readonly "$dmg" |
+              awk -F '\t' '/\/Volumes\// { print $NF }' |
+              tail -n 1
+          )"
+          test -n "$mount_point"
+          detach_dmg() {
+            for attempt in 1 2 3; do
+              if hdiutil detach "$mount_point"; then
+                return 0
+              fi
+              sleep 5
+            done
+            hdiutil detach -force "$mount_point"
+          }
+          trap 'pkill -f "$mount_point/LTX Desktop.app/Contents/" || true; detach_dmg || true' EXIT
+          open -n "$mount_point/LTX Desktop.app" --args --disable-gpu
+          sleep 15
+          if ! pgrep -f '/LTX Desktop.app/Contents/MacOS/' >/dev/null; then
+            echo "DMG application exited during launch smoke test" >&2
+            exit 1
+          fi
+          pkill -f "$mount_point/LTX Desktop.app/Contents/" || true
+          sleep 2
+          detach_dmg
+          trap - EXIT
+
+          if find "release/mac-arm64/LTX Desktop.app" -type f \( \
+            -name '.env' -o -name '*.vault' -o -name 'id_rsa' -o -name '*.pfx' \
+            -o -name '*.p12' -o -name '*.key' \
+          \) | grep -q .; then
+            echo "Forbidden file found in packaged macOS app" >&2
+            exit 1
+          fi
+          if grep -RIl --include='*.pem' \
+            -E -- '-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----' \
+            "release/mac-arm64/LTX Desktop.app" | grep -q .; then
+            echo "Private key material found in packaged macOS app" >&2
+            exit 1
+          fi
+
+          mkdir -p release/upload
+          cp "$dmg" release/upload/
+
+      - name: Attest macOS release asset
+        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        with:
+          subject-path: release/upload/*
+
+      - name: Upload macOS release asset
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: installer-macos-${{ inputs.tag }}
+          path: release/upload/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+  evidence:
+    name: Assemble installer release evidence
+    needs: [windows, linux, macos]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ inputs.tag }}
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
+        with:
+          version: "0.11.25"
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.13.12"
+
+      - name: Download installer assets
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          pattern: installer-*-${{ inputs.tag }}
+          path: release/evidence
+          merge-multiple: true
+
+      - name: Create source and dependency evidence
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile
+          mkdir -p release/evidence
+          base_name="ltx-desktop-${RELEASE_TAG#v}"
+          notes_file="docs/RELEASE_NOTES_${RELEASE_TAG#v}.md"
+          test -f "$notes_file"
+          git archive --format=tar.gz --prefix="${base_name}/" \
+            --output="release/evidence/${base_name}.tar.gz" HEAD
+          cp "$notes_file" release/evidence/RELEASE_NOTES.md
+          pnpm licenses list --prod --json > release/evidence/node-licenses.json
+          uv export --frozen --no-dev --no-editable --no-emit-project \
+            --project backend --output-file release/evidence/python-requirements.txt
+          mkdir -p release/sbom-source
+          git archive HEAD | tar -x -C release/sbom-source
+
+      - name: Generate source-only SPDX SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          path: release/sbom-source
+          format: spdx-json
+          output-file: release/evidence/sbom.spdx.json
+          upload-artifact: false
+
+      - name: Validate asset contract and generate checksums
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          node scripts/validate-installer-release.mjs \
+            release/evidence "${RELEASE_TAG#v}"
+          node scripts/generate-checksums.mjs release/evidence
+          (
+            cd release/evidence
+            sha256sum --check SHA256SUMS
+          )
+
+      - name: Attest complete release evidence
+        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        with:
+          subject-path: release/evidence/*
+
+      - name: Upload complete gated release
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: installer-release-${{ inputs.tag }}
+          path: release/evidence/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 90
+
+  draft:
+    name: Stage draft installer prerelease
+    if: ${{ inputs.create_draft }}
+    needs: evidence
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - name: Download gated release
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: installer-release-${{ inputs.tag }}
+          path: release/evidence
+
+      - name: Verify downloaded release and stage draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          (
+            cd release/evidence
+            sha256sum --check SHA256SUMS
+          )
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            test "$(
+              gh release view "$RELEASE_TAG" \
+                --repo "$GITHUB_REPOSITORY" \
+                --json isDraft \
+                --jq .isDraft
+            )" = "true"
+            gh release delete "$RELEASE_TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --yes
+          fi
+          gh release create "$RELEASE_TAG" release/evidence/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --draft \
+            --prerelease \
+            --notes-file release/evidence/RELEASE_NOTES.md \
+            --title "LTX Desktop ${RELEASE_TAG} (unsigned beta)"
+
+  publish:
+    name: Publish approved installer prerelease
+    if: ${{ inputs.publish }}
+    needs: draft
+    runs-on: ubuntu-24.04
+    environment: installer-release
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - name: Download gated release
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: installer-release-${{ inputs.tag }}
+          path: release/evidence
+
+      - name: Replace draft assets with approved evidence and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          draft_id="$(
+            gh api --paginate --slurp \
+              "repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
+              | jq -r --arg tag "$RELEASE_TAG" \
+                'add | map(select(.tag_name == $tag and .draft == true))
+                  | if length == 1 then .[0].id else empty end'
+          )"
+          test -n "$draft_id"
+          (
+            cd release/evidence
+            sha256sum --check SHA256SUMS
+          )
+          gh release upload "$RELEASE_TAG" release/evidence/* \
+            --repo "$GITHUB_REPOSITORY" --clobber
+
+          assets_verified=false
+          for attempt in {1..12}; do
+            release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/${draft_id}")"
+            assets_verified=true
+            if ! diff -u \
+              <(find release/evidence -maxdepth 1 -type f -printf '%f\n' | sort) \
+              <(jq -r '.assets[].name' <<<"$release_json" | sort); then
+              assets_verified=false
+            fi
+            while read -r expected name; do
+              digest="$(jq -r --arg name "$name" \
+                '.assets[] | select(.name == $name) | .digest // empty' \
+                <<<"$release_json")"
+              size="$(jq -r --arg name "$name" \
+                '.assets[] | select(.name == $name) | .size // empty' \
+                <<<"$release_json")"
+              if [[ "$digest" != "sha256:${expected}" \
+                || "$size" != "$(stat -c %s "release/evidence/$name")" ]]; then
+                assets_verified=false
+                break
+              fi
+            done < release/evidence/SHA256SUMS
+            sums_digest="$(jq -r \
+              '.assets[] | select(.name == "SHA256SUMS") | .digest // empty' \
+              <<<"$release_json")"
+            sums_size="$(jq -r \
+              '.assets[] | select(.name == "SHA256SUMS") | .size // empty' \
+              <<<"$release_json")"
+            if [[ "$sums_digest" != "sha256:$(sha256sum release/evidence/SHA256SUMS | cut -d' ' -f1)" \
+              || "$sums_size" != "$(stat -c %s release/evidence/SHA256SUMS)" ]]; then
+              assets_verified=false
+            fi
+            if [[ "$assets_verified" = "true" ]]; then
+              break
+            fi
+            sleep 5
+          done
+          test "$assets_verified" = "true"
+
+          gh release edit "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --draft=false \
+            --prerelease

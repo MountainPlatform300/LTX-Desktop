@@ -1,0 +1,8 @@
+# Build backends required by the commit-pinned source dependencies.
+# Update versions and all reviewed platform wheel hashes together.
+setuptools==81.0.0 \
+    --hash=sha256:fdd925d5c5d9f62e4b74b30d6dd7828ce236fd6ed998a08d81de62ce5a6310d6
+uv-build==0.9.18 \
+    --hash=sha256:05af1cbc80f062034ec9e7e824c0c04b0f91a1d21db03d367f3c26cd95873af5 \
+    --hash=sha256:1122155f59d49ed8c64ee004eb2887e627a037bb251e73acb3ebb548339c58c3 \
+    --hash=sha256:1c703072497e38b8f950a620c6dc7fc6ef4a74bde0126e1db1f4377bced887f1

@@ -19,6 +19,8 @@ class IcLoraPipeline(Protocol):
         lora_path: str,
         device: torch.device,
         streaming_prefetch_count: int | None,
+        distilled_lora_path: str | None = None,
+        lora_scale: float = 1.0,
     ) -> "IcLoraPipeline":
         ...
 
@@ -33,5 +35,6 @@ class IcLoraPipeline(Protocol):
         images: list[ImageConditioningInput],
         video_conditioning: list[tuple[str, float]],
         output_path: str,
+        skip_stage_2: bool = True,
     ) -> None:
         ...

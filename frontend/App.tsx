@@ -5,17 +5,25 @@ import { ProjectProvider } from './contexts/ProjectContext'
 import { ViewProvider, useView } from './contexts/ViewContext'
 import { KeyboardShortcutsProvider } from './contexts/KeyboardShortcutsContext'
 import { AppSettingsProvider, useAppSettings } from './contexts/AppSettingsContext'
+import { LoraTrainingProvider } from './contexts/LoraTrainingContext'
+import { QueueProvider } from './contexts/QueueContext'
+import { ToastProvider } from './contexts/ToastContext'
 import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal'
+import { QueueAssetRouter } from './components/QueueAssetRouter'
+import { QueueBadgeButton } from './components/QueueBadgeButton'
+import { QueueSidePanel } from './components/QueueSidePanel'
 import { useBackend } from './hooks/use-backend'
 import { logger } from './lib/logger'
 import { Home } from './views/Home'
 import { Project } from './views/Project'
+import { LoraTrainer } from './views/LoraTrainer'
 import { LaunchGate } from './components/FirstRunSetup'
 import { LtxUpgradePrompt } from './components/LtxUpgradePrompt'
 import { PythonSetup } from './components/PythonSetup'
 import { SettingsModal, type SettingsTabId } from './components/SettingsModal'
 import { LogViewer } from './components/LogViewer'
 import { ApiGatewayModal, type ApiGatewaySection } from './components/ApiGatewayModal'
+import { ConfirmDialogProvider } from './components/ui/confirm-dialog'
 import { Button } from './components/ui/button'
 
 type SetupState = 'loading' | { needsSetup: boolean; needsLicense: boolean }
@@ -49,9 +57,16 @@ function AppContent() {
     description: string
     blocking?: boolean
     includeOptionalMissing?: boolean
+    /** When true, the user may dismiss without adding a key (e.g. the forced
+     *  API-only upsell on unsupported hardware — let them browse the app). */
+    skippable?: boolean
   }
 
   const [apiGatewayRequest, setApiGatewayRequest] = useState<ApiGatewayRequest | null>(null)
+  // Suppresses the forced API-only upsell after the user dismisses it, so they
+  // can browse the app without an LTX key. Just-in-time prompts still fire on
+  // actual generation attempts.
+  const [forcedUpsellDismissed, setForcedUpsellDismissed] = useState(false)
 
   const isBackendRestarting = processStatus === 'restarting'
   const isBackendDead = processStatus === 'dead'
@@ -346,7 +361,7 @@ function AppContent() {
   const shouldBlockUntilSettingsLoaded = forceApiGenerations && !isLoaded
   const shouldShowForcedFirstRunUpsell = isForcedFirstRun && isLoaded && !settings.hasLtxApiKey
   const shouldShowGlobalForcedUpsell = forceApiGenerations && setupState !== 'loading' && !setupState.needsSetup && isLoaded && !settings.hasLtxApiKey
-  const shouldBlockForLtxKey = shouldShowForcedFirstRunUpsell || shouldShowGlobalForcedUpsell
+  const shouldBlockForLtxKey = !forcedUpsellDismissed && (shouldShowForcedFirstRunUpsell || shouldShowGlobalForcedUpsell)
 
   useEffect(() => {
     if (shouldBlockForLtxKey && apiGatewayRequest === null) {
@@ -356,6 +371,7 @@ function AppContent() {
         description: 'This app is configured for API-only generation. Add your API key to continue.',
         blocking: true,
         includeOptionalMissing: true,
+        skippable: true,
       })
     }
   }, [shouldBlockForLtxKey, apiGatewayRequest])
@@ -504,6 +520,8 @@ function AppContent() {
         return <Home />
       case 'project':
         return <Project />
+      case 'lora-trainer':
+        return <LoraTrainer />
       default:
         return <Home />
     }
@@ -515,6 +533,7 @@ function AppContent() {
 
       {showGlobalControls && (
         <div className="fixed top-[18px] right-3 z-50 flex items-center gap-1">
+          <QueueBadgeButton />
           <button
             onClick={() => setIsLogViewerOpen(true)}
             className="h-8 w-8 flex items-center justify-center rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
@@ -545,6 +564,14 @@ function AppContent() {
         isOpen={shouldShowGateway}
         blocking={apiGatewayRequest?.blocking}
         onClose={() => setApiGatewayRequest(null)}
+        onSkip={
+          apiGatewayRequest?.skippable
+            ? () => {
+                setForcedUpsellDismissed(true)
+                setApiGatewayRequest(null)
+              }
+            : undefined
+        }
         title={apiGatewayRequest?.title ?? 'Connect API Keys'}
         description={apiGatewayRequest?.description ?? 'Add the required API keys to continue.'}
         sections={gatewaySections}
@@ -602,15 +629,25 @@ function AppContent() {
 
 export default function App() {
   return (
-    <ProjectProvider>
-      <ViewProvider>
-        <KeyboardShortcutsProvider>
-          <AppSettingsProvider>
-            <AppContent />
-            <KeyboardShortcutsModal />
-          </AppSettingsProvider>
-        </KeyboardShortcutsProvider>
-      </ViewProvider>
-    </ProjectProvider>
+    <ConfirmDialogProvider>
+      <ProjectProvider>
+        <ViewProvider>
+          <KeyboardShortcutsProvider>
+            <AppSettingsProvider>
+              <ToastProvider>
+                <LoraTrainingProvider>
+                  <QueueProvider>
+                    <AppContent />
+                    <QueueAssetRouter />
+                    <QueueSidePanel />
+                    <KeyboardShortcutsModal />
+                  </QueueProvider>
+                </LoraTrainingProvider>
+              </ToastProvider>
+            </AppSettingsProvider>
+          </KeyboardShortcutsProvider>
+        </ViewProvider>
+      </ProjectProvider>
+    </ConfirmDialogProvider>
   )
 }

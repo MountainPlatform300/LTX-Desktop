@@ -119,7 +119,11 @@ class DownloadHandler(StateHandlerBase):
         current = session.current_running_file
         if current is None or current.file_type != cp_id:
             return
-        current.downloaded_bytes = downloaded
+        # The HuggingFace/Xet progress accumulator can over-count on chunk
+        # re-fetches/retries, so clamp to the known file size — otherwise the
+        # UI renders "downloaded > total" and an inflated speed.
+        expected = get_model_cp_spec(cp_id).expected_size_bytes
+        current.downloaded_bytes = min(downloaded, expected) if expected > 0 else downloaded
         current.speed_bytes_per_sec = speed_bytes_per_sec
 
     @with_state_lock
@@ -271,7 +275,14 @@ class DownloadHandler(StateHandlerBase):
             self.finish_download()
             return
 
-        hf_token = require_hf_token(self.state, self._lock) if self.config.hf_gating_enabled else None
+        # Attach an HF token when gating is globally enabled, or when any of the
+        # requested checkpoints is itself a gated repo (e.g. Ideogram 4 nf4,
+        # FLUX.1 Krea dev) — those refuse an anonymous download regardless of
+        # the global flag. require_hf_token raises (-> 400) if the user hasn't
+        # authenticated, which the UI pre-empts by routing gated downloads
+        # through the HF auth flow first.
+        any_gated = any(get_model_cp_spec(cp_id).is_gated for cp_id in cp_ids)
+        hf_token = require_hf_token(self.state, self._lock) if (self.config.hf_gating_enabled or any_gated) else None
 
         try:
             if atomic_commit:
@@ -331,7 +342,12 @@ class DownloadHandler(StateHandlerBase):
     def check_model_access(self, cp_ids: set[ModelCheckpointID]) -> CheckModelAccessResponse:
         repo_ids = {get_model_cp_spec(cp_id).repo_id for cp_id in cp_ids}
 
-        if not self.config.hf_gating_enabled:
+        # Skip the HF access probe only when gating is fully disabled AND none of
+        # the requested checkpoints are themselves gated repos — a per-spec gated
+        # flag (Ideogram 4 nf4, FLUX.1 Krea dev) must be honored even if the
+        # global gating flag is off.
+        any_gated = any(get_model_cp_spec(cp_id).is_gated for cp_id in cp_ids)
+        if not self.config.hf_gating_enabled and not any_gated:
             return CheckModelAccessResponse(access={repo_id: "authorized" for repo_id in repo_ids})
 
         hf_token = require_hf_token(self.state, self._lock)

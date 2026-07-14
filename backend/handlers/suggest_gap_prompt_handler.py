@@ -139,7 +139,7 @@ class SuggestGapPromptHandler(StateHandlerBase):
             user_parts.append({"text": "First frame of the shot AFTER the gap:"})
             user_parts.append({"inlineData": {"mimeType": "image/jpeg", "data": after_frame}})
 
-        gemini_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+        gemini_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
         contents: list[JSONValue] = [{"role": "user", "parts": user_parts}]
         system_instruction: dict[str, JSONValue] = {"parts": [{"text": system_text}]}
         generation_config: dict[str, JSONValue] = {"temperature": 0.7, "maxOutputTokens": 512}

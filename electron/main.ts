@@ -13,6 +13,7 @@ import { stopPythonBackend } from './python-backend'
 import { initAutoUpdater } from './updater'
 import { createWindow, getMainWindow } from './window'
 import { sendAnalyticsEvent } from './analytics'
+import { resumeWslSetupIfNeeded, autoApplyWslMemoryIfNeeded } from './wsl-setup'
 
 function logAppVersion(): void {
   if (!app.isPackaged) {
@@ -56,8 +57,33 @@ if (!gotLock) {
   app.whenReady().then(async () => {
     setupCSP()
     createWindow()
-    initAutoUpdater()
+    const version = app.getVersion()
+    initAutoUpdater(
+      false, // Unsigned beta: updates remain manual until installer signing is enabled.
+      version.includes('-alpha.') ? 'alpha'
+        : version.includes('-beta.') ? 'beta'
+          : 'latest',
+    )
     // Python setup + backend start are now driven by the renderer via IPC
+
+    // If a WSL2 local-training setup was interrupted by the required reboot,
+    // re-probe and advance its persisted stage so the wizard can resume.
+    if (process.platform === 'win32') {
+      try {
+        // Raise WSL2's memory limit up front (before any WSL probe launches the
+        // VM with the old, too-small default cap) so local training doesn't get
+        // OOM-killed mid-preprocess. Safe, idempotent, no WSL shutdown.
+        const mem = autoApplyWslMemoryIfNeeded()
+        if (mem.applied) {
+          logger.info(`[wsl-setup] auto-raised WSL2 memory to ${mem.memoryGb} GB`)
+        } else if (mem.error) {
+          logger.warn(`[wsl-setup] auto memory apply failed: ${mem.error}`)
+        }
+        resumeWslSetupIfNeeded()
+      } catch (err) {
+        logger.warn(`[wsl-setup] resume check failed: ${err}`)
+      }
+    }
 
     // Fire analytics event (no-op if user hasn't opted in)
     void sendAnalyticsEvent('ltxdesktop_app_launched')

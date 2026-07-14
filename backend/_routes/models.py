@@ -8,10 +8,14 @@ from _routes._errors import HTTPError
 from api_types import (
     CheckModelAccessRequest,
     CheckModelAccessResponse,
+    CheckpointPathResponse,
     DownloadProgressResponse,
     ImageGenRecommendationResponse,
+    LoadModelFromPathRequest,
+    LoadModelFromPathResponse,
     LtxIcLoraRecommendationResponse,
     LtxRecommendationResponse,
+    ModelCheckpointID,
     ModelDeleteRequest,
     ModelDownloadRequest,
     ModelDownloadStartResponse,
@@ -92,3 +96,21 @@ def route_model_delete(
         raise HTTPError(409, "DOWNLOAD_ALREADY_RUNNING")
     handler.models.delete_checkpoints(req.cp_ids)
     return StatusResponse(status="ok")
+
+
+@router.get("/models/checkpoint-path", response_model=CheckpointPathResponse)
+def route_checkpoint_path(
+    cp_id: ModelCheckpointID = Query(...),
+    handler: AppHandler = Depends(get_state_service),
+) -> CheckpointPathResponse:
+    return handler.models.get_checkpoint_path(cp_id)
+
+
+@router.post("/models/load-from-path", response_model=LoadModelFromPathResponse)
+def route_load_model_from_path(
+    req: LoadModelFromPathRequest,
+    handler: AppHandler = Depends(get_state_service),
+) -> LoadModelFromPathResponse:
+    if handler.downloads.is_download_running():
+        raise HTTPError(409, "DOWNLOAD_ALREADY_RUNNING")
+    return handler.models.load_from_path(req.cp_id, req.sourcePath)
