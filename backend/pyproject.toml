@@ -35,7 +35,7 @@ dependencies = [
     # ship on every platform — a Mac user still drives a remote Linux GPU.
     "runpod>=1.9.1",
     "paramiko>=5.0.0",
-    "cryptography>=49.0.0",
+    "cryptography>=50.0.0",
 ]
 
 [[tool.uv.index]]
