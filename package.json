@@ -61,7 +61,7 @@
     "autoprefixer": "^10.4.19",
     "concurrently": "^8.2.2",
     "cross-env": "^10.1.0",
-    "electron": "^41.1.0",
+    "electron": "^41.10.6",
     "electron-builder": "^26.15.3",
     "jsdom": "29.1.1",
     "openapi-typescript": "^7.13.0",
